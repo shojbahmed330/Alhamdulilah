@@ -316,16 +316,20 @@ export const geminiService = {
     
     let dynamicContext = "";
     if (context?.userNames && context.userNames.length > 0) {
-        dynamicContext += `\nFor intents that require a 'target_name' (like open_profile, send_message, add_friend, etc.), the user might say one of these names: [${context.userNames.join(', ')}]. Extract the name exactly as it appears in this list if you find a match.`;
+        dynamicContext += `
+For intents that require a 'target_name' (like open_profile, send_message, add_friend, etc.), the user might say one of these names: [${context.userNames.join(', ')}]. Extract the name exactly as it appears in this list if you find a match.`;
     }
      if (context?.groupNames && context.groupNames.length > 0) {
-        dynamicContext += `\nFor intents related to groups (like join_group, leave_group, etc.), here are some available groups: [${context.groupNames.join(', ')}].`;
+        dynamicContext += `
+For intents related to groups (like join_group, leave_group, etc.), here are some available groups: [${context.groupNames.join(', ')}].`;
     }
      if (context?.themeNames && context.themeNames.length > 0) {
-        dynamicContext += `\nFor 'intent_change_chat_theme', available themes are: [${context.themeNames.join(', ')}].`;
+        dynamicContext += `
+For 'intent_change_chat_theme', available themes are: [${context.themeNames.join(', ')}].`;
     }
     if (context?.active_author_name) {
-        dynamicContext += `\nThe post currently on screen belongs to '${context.active_author_name}'. Generic commands like "this post" or "like this" refer to them.`;
+        dynamicContext += `
+The post currently on screen belongs to '${context.active_author_name}'. Generic commands like "this post" or "like this" refer to them.`;
     }
     
     const systemInstruction = NLU_SYSTEM_INSTRUCTION_BASE + "\nAvailable Intents:\n" + NLU_INTENT_LIST + dynamicContext;
