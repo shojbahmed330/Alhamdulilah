@@ -23,9 +23,9 @@ The JSON object must have:
 2. An optional "slots" object: For intents that require extra information (like a name or number).
 
 CONTEXTUAL RULES:
-- An 'active_author_name' might be provided in the context. This is the author of the post currently in the center of the user's screen.
-- If a command is generic like "open this post", "comment on this post", "ei post kholo", "ei chobi te comment koro", and an 'active_author_name' is provided, your intent MUST NOT include a 'target_name' slot. The app will use the active context.
-- ONLY generate a 'target_name' slot if the user explicitly says a different name, for example, "open Shojib's post".
+- The context may include 'active_author_name'. This is the author of the post currently visible on the screen.
+- CRITICAL RULE: If the user command is generic and refers to the on-screen content (e.g., "open this post", "comment on this", "ei post-a comment koro", "ei chobiti kholo"), you MUST assume the target is the 'active_author_name' and you MUST NOT return a 'target_name' slot.
+- ONLY return a 'target_name' slot if the user explicitly says a different name. Example: "open Shojib's post". In this case, 'target_name' should be 'Shojib'.
 - For reaction commands like "like this post", "love this post", "haha react koro", extract the reaction type.
 - If the user says "my profile", "amar profile", or similar, the intent MUST be 'intent_open_profile' and there MUST NOT be a 'target_name' slot.
 - If a command is "next" or "previous", it could mean the next post in a feed, or the next image in a multi-image view. The app has context. You can use 'intent_next_post' for generic next commands, and 'intent_next_image' if the user explicitly says 'next image' or 'porer chobi'.
@@ -52,7 +52,7 @@ Your primary goal is to map various phrasings to the correct intent. Be flexible
 - "amar profile" -> { "intent": "intent_open_profile" }
 - "shojib er profile dekho" -> { "intent": "intent_open_profile", "slots": { "target_name": "shojib" } }
 - "save this post", "post ta save koro" -> { "intent": "intent_save_post" }
-- "hide this", "eta lukao" -> { "intent": "intent_hide_post" }
+- "hide this post", "ei post ta sorিয়ে দাও" -> { "intent": "intent_hide_post" }
 - "copy link", "link ta copy koro" -> { "intent": "intent_copy_link" }
 - "report this post" -> { "intent": "intent_report_post" }
 - "open this post", "ei post kholo", "post ti open koro" -> { "intent": "intent_open_post_viewer" }

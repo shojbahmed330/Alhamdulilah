@@ -160,20 +160,84 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
             active_author_name: activePost ? activePost.author.name : undefined
         });
         
-        // --- DEFENSIVE LOGIC ---
-        // Check if the command is a generic one that refers to the current post context.
-        const isGenericPostCommand = /this post|ei post|ei chobi|post ti|post ta|এই পোস্ট/i.test(command.toLowerCase());
-        
-        // If it's a generic command and the AI hallucinated a target_name, delete it.
-        // This forces the app to use the `activePost` context.
-        if (isGenericPostCommand && intentResponse.slots?.target_name) {
-            console.warn(`Defensive override: Ignoring hallucinated target_name '${intentResponse.slots.target_name}' for generic command.`);
-            delete intentResponse.slots.target_name;
-        }
-        // --- END DEFENSIVE LOGIC ---
-
         const { intent, slots } = intentResponse;
 
+        // Helper function to determine the target post for an action.
+        const getTargetPost = (): Post | null => {
+            // CRITICAL: Check if the command is generic and refers to the current post context.
+            const isGenericPostCommand = /this post|this picture|this photo|ei post|ei chobi|post ti|post ta|এই পোস্ট|এই ছবি|ছবিটি/i.test(command.toLowerCase());
+
+            let targetPost: Post | null = null;
+            
+            // 1. If a specific name is mentioned by the NLU, try to find that post first.
+            if (slots?.target_name) {
+                targetPost = visiblePosts.find(p => !p.isSponsored && p.author.name.toLowerCase() === (slots.target_name as string).toLowerCase()) || null;
+            }
+            
+            // 2. IMPORTANT OVERRIDE: If the command was generic, IGNORE the NLU's target_name and use the active post.
+            //    OR, if finding by name failed, fall back to the active post.
+            if (isGenericPostCommand || !targetPost) {
+                targetPost = activePost;
+            }
+            
+            return targetPost;
+        };
+        
+        // List of intents that operate on a target post
+        const postTargetIntents = [
+            'intent_react_to_post', 'intent_share', 'intent_save_post', 'intent_hide_post',
+            'intent_copy_link', 'intent_report_post', 'intent_add_comment_text',
+            'intent_open_post_viewer', 'intent_comment', 'intent_view_comments', 'intent_view_comments_by_author'
+        ];
+
+        if (postTargetIntents.includes(intent)) {
+            const targetPost = getTargetPost();
+            if (targetPost) {
+                switch (intent) {
+                    case 'intent_react_to_post':
+                        const reactionKey = (slots?.reaction_type as string)?.toLowerCase() || 'like';
+                        const emoji = VOICE_EMOJI_MAP[reactionKey] || '👍';
+                        onReactToPost(targetPost.id, emoji);
+                        onSetTtsMessage(`Reacted with ${emoji} to ${targetPost.author.name}'s post.`);
+                        break;
+                    case 'intent_share':
+                        onSharePost(targetPost);
+                        break;
+                    case 'intent_save_post':
+                        onSavePost(targetPost, true);
+                        break;
+                    case 'intent_hide_post':
+                        onHidePost(targetPost.id);
+                        break;
+                    case 'intent_copy_link':
+                        onCopyLink(targetPost);
+                        break;
+                    case 'intent_report_post':
+                        onReportPost(targetPost);
+                        break;
+                    case 'intent_open_post_viewer':
+                        onOpenPhotoViewer(targetPost);
+                        break;
+                    case 'intent_add_comment_text':
+                    case 'intent_comment':
+                    case 'intent_view_comments':
+                    case 'intent_view_comments_by_author':
+                        const commentText = slots?.comment_text as string | undefined;
+                        onOpenComments(targetPost, undefined, commentText);
+                        if (commentText) {
+                            onSetTtsMessage(`Comment text added. Say 'post comment' to publish.`);
+                        }
+                        break;
+                }
+            } else {
+                onSetTtsMessage(`Sorry, I couldn't figure out which post you meant. Please scroll to a post first.`);
+            }
+            onCommandProcessed();
+            return; // Exit after handling post-target intent
+        }
+
+
+        // --- Handle other intents (navigation, etc.) ---
         switch (intent) {
           case 'intent_next_post':
             isProgrammaticScroll.current = true;
@@ -195,86 +259,6 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
           case 'intent_pause_post':
             setIsPlaying(false);
             break;
-          case 'intent_react_to_post':
-            if (activePost && slots?.reaction_type) {
-                const reactionKey = (slots.reaction_type as string).toLowerCase();
-                const emoji = VOICE_EMOJI_MAP[reactionKey] || '👍'; // Default to like
-                onReactToPost(activePost.id, emoji);
-                onSetTtsMessage(`Reacted with ${emoji} to ${activePost.author.name}'s post.`);
-            } else if (!activePost) {
-                onSetTtsMessage("Please select a post to react to.");
-            }
-            break;
-          case 'intent_share':
-            if (activePost) {
-                onSharePost(activePost);
-            } else {
-                onSetTtsMessage("Please select a post to share by playing it or navigating to it.");
-            }
-            break;
-          case 'intent_save_post':
-            if (activePost) {
-                onSavePost(activePost, true);
-            } else {
-                 onSetTtsMessage("Please select a post to save.");
-            }
-            break;
-          case 'intent_hide_post':
-            if (activePost) {
-                onHidePost(activePost.id);
-            } else {
-                 onSetTtsMessage("Please select a post to hide.");
-            }
-            break;
-          case 'intent_copy_link':
-            if (activePost) {
-                onCopyLink(activePost);
-            } else {
-                 onSetTtsMessage("Please select a post to copy its link.");
-            }
-            break;
-          case 'intent_report_post':
-            if (activePost) {
-                onReportPost(activePost);
-            } else {
-                onSetTtsMessage("Please select a post to report.");
-            }
-            break;
-            
-          // Consolidated block for all actions that target a post (either by name or context)
-          case 'intent_add_comment_text':
-          case 'intent_open_post_viewer':
-          case 'intent_comment':
-          case 'intent_view_comments':
-          case 'intent_view_comments_by_author': {
-                let targetPost: Post | null = null;
-                
-                // If a specific name was given (and not overridden by defensive logic), find that post.
-                if (slots?.target_name) {
-                    targetPost = visiblePosts.find(p => !p.isSponsored && p.author.name.toLowerCase() === (slots.target_name as string).toLowerCase()) || null;
-                } else {
-                    // Otherwise, use the active post from the screen context.
-                    targetPost = activePost;
-                }
-
-                if (targetPost) {
-                    if (intent === 'intent_open_post_viewer') {
-                        onOpenPhotoViewer(targetPost);
-                    } else { // All other intents in this block are comment-related
-                        const commentText = slots?.comment_text as string | undefined;
-                        onOpenComments(targetPost, undefined, commentText);
-                        if (commentText) {
-                             onSetTtsMessage(`Comment text added. Say 'post comment' to publish.`);
-                        }
-                    }
-                } else if (slots?.target_name) {
-                    onSetTtsMessage(`I can't find a post by ${slots.target_name} on your screen.`);
-                } else {
-                    onSetTtsMessage(`Sorry, I couldn't figure out which post you meant. Please scroll to a post first.`);
-                }
-                break;
-            }
-
           case 'intent_add_text_to_story':
             if (slots?.text) {
                 onNavigate(AppView.CREATE_STORY, { initialText: slots.text as string });
