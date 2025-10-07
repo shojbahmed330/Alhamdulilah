@@ -23,9 +23,13 @@ The JSON object must have:
 2. An optional "slots" object: For intents that require extra information (like a name or number).
 
 CONTEXTUAL RULES:
-- If a user says a simple action like "share", "save post", "hide post", "copy link", "report post" or "open profile" without specifying a target name, assume they mean the currently active post on the screen. The app will handle the context. Your job is just to return the base intent (e.g., "intent_share").
+- An 'active_author_name' might be provided in the context. This is the author of the post currently in the center of the user's screen.
+- If a command is generic like "open this post", "comment on this post", "ei post kholo", "ei chobi te comment koro", and an 'active_author_name' is provided, your intent MUST NOT include a 'target_name' slot. The app will use the active context.
+- ONLY generate a 'target_name' slot if the user explicitly says a different name, for example, "open Shojib's post".
+- If "ei post a comment koro" is the command, the intent is 'intent_comment' with NO slots.
+- If "open this post" is the command, the intent is 'intent_open_post_viewer' with NO slots.
+- If "comment on this post nice picture" is the command, the intent is 'intent_add_comment_text' with a 'comment_text' slot, but NO 'target_name' slot.
 - For reaction commands like "like this post", "love this post", "haha react koro", extract the reaction type.
-- For commenting commands like "comment on this post [text]", extract the comment text.
 - If the user says "my profile", "amar profile", or similar, the intent MUST be 'intent_open_profile' and there MUST NOT be a 'target_name' slot.
 - If a command is "next" or "previous", it could mean the next post in a feed, or the next image in a multi-image view. The app has context. You can use 'intent_next_post' for generic next commands, and 'intent_next_image' if the user explicitly says 'next image' or 'porer chobi'.
 
@@ -36,7 +40,7 @@ Your primary goal is to map various phrasings to the correct intent. Be flexible
 - "love dao", "bhalobasha" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "love" } }
 - "haha react koro", "hashi" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "haha" } }
 - "comment on this post", "ei post a comment koro", "comment koro", "ei chobi te comment koro" -> "intent_comment"
-- "comment on this post this is nice", "ei post e comment koro eta sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "this is nice" } }
+- "comment on this post this is nice", "ei post e comment koro eta sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "eta sundor" } }
 - "ei chobi te comment koro onek sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "onek sundor" } }
 - "post my comment", "comment post koro" -> "intent_post_comment"
 - "share koro", "শেয়ার" -> "intent_share"
@@ -212,7 +216,7 @@ const postSchemaProperties = {
 
 export const geminiService = {
   // --- NLU ---
-  async processIntent(command: string, context?: { userNames?: string[], groupNames?: string[], themeNames?: string[] }): Promise<NLUResponse> {
+  async processIntent(command: string, context?: { userNames?: string[], groupNames?: string[], themeNames?: string[], active_author_name?: string }): Promise<NLUResponse> {
     
     let dynamicContext = "";
     if (context?.userNames && context.userNames.length > 0) {
@@ -223,6 +227,9 @@ export const geminiService = {
     }
      if (context?.themeNames && context.themeNames.length > 0) {
         dynamicContext += `\nFor 'intent_change_chat_theme', available themes are: [${context.themeNames.join(', ')}].`;
+    }
+    if (context?.active_author_name) {
+        dynamicContext += `\nCONTEXT: The post by '${context.active_author_name}' is currently active on the screen. Generic commands like "this post" or "ei post" refer to this post. Do not output a 'target_name' slot for these generic commands unless the user says a different, specific name.`
     }
 
     const systemInstruction = NLU_SYSTEM_INSTRUCTION_BASE + "\nAvailable Intents:\n" + NLU_INTENT_LIST + dynamicContext;

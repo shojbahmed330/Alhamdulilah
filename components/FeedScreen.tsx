@@ -150,13 +150,17 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   
   const handleCommand = useCallback(async (command: string) => {
     try {
+        const postIndex = (currentPostIndex === -1 && visiblePosts.length > 0) ? 0 : currentPostIndex;
+        const activePost = visiblePosts[postIndex];
+
         const userNamesOnScreen = posts.map(p => p.isSponsored ? p.sponsorName as string : p.author.name);
         const allContextNames = [...userNamesOnScreen, ...friends.map(f => f.name)];
-        const intentResponse = await geminiService.processIntent(command, { userNames: [...new Set(allContextNames)] });
+        const intentResponse = await geminiService.processIntent(command, { 
+            userNames: [...new Set(allContextNames)],
+            active_author_name: activePost ? activePost.author.name : undefined
+        });
         
         const { intent, slots } = intentResponse;
-
-        const activePost = visiblePosts[currentPostIndex];
 
         switch (intent) {
           case 'intent_next_post':
@@ -170,7 +174,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
             setIsPlaying(true);
             break;
           case 'intent_play_post':
-            if (currentPostIndex === -1 && visiblePosts.length > 0) {
+            if (postIndex < 0 && visiblePosts.length > 0) {
                 isProgrammaticScroll.current = true;
                 setCurrentPostIndex(0);
             }
@@ -218,10 +222,17 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
             if (activePost && slots?.comment_text) {
                 onOpenComments(activePost, undefined, slots.comment_text as string);
                 onSetTtsMessage(`Comment text added. Say 'post comment' to publish.`);
+            } else if (activePost) {
+                // This can happen if the text slot fails but the intent is correct
+                onOpenComments(activePost);
             }
             break;
           case 'intent_open_post_viewer':
-            if (activePost) {
+             if (slots?.target_name) {
+                const targetName = slots.target_name as string;
+                const postToView = visiblePosts.find(p => !p.isSponsored && p.author.name === targetName);
+                if (postToView) onOpenPhotoViewer(postToView);
+            } else if (activePost) {
                 onOpenPhotoViewer(activePost);
             }
             break;
@@ -331,7 +342,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   }, [
       visiblePosts, currentPostIndex, friends, onOpenProfile, onReactToPost, onOpenComments, onSetTtsMessage, onStartCreatePost, 
       onNavigate, onSetScrollState, setSearchResults, onCommandProcessed, fetchRewardedCampaign, onSharePost, language, currentUser,
-      onSavePost, onHidePost, onCopyLink, onReportPost, onOpenPhotoViewer
+      onSavePost, onHidePost, onCopyLink, onReportPost, onOpenPhotoViewer, posts
   ]);
 
 
