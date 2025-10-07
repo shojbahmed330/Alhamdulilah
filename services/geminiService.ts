@@ -804,34 +804,7 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
     rejectJoinRequest: (groupId: string, userId: string) => firebaseService.rejectJoinRequest(groupId, userId),
     approvePost: (postId: string) => firebaseService.approvePost(postId),
     rejectPost: (postId: string) => firebaseService.rejectPost(postId),
-    joinGroup: async (userId: string, groupId: string, answers?: string[]): Promise<boolean> => {
-         const groupRef = doc(db, 'groups', groupId);
-         const user = await firebaseService.getUserProfileById(userId);
-         if (!user) return false;
-         const memberObject = { id: user.id, name: user.name, username: user.username, avatarUrl: user.avatarUrl };
-         const groupDoc = await getDoc(groupRef);
-         if (!groupDoc.exists()) return false;
-         const group = groupDoc.data() as Group;
-
-         if (group.privacy === 'public') {
-             await updateDoc(groupRef, {
-                 members: arrayUnion(memberObject),
-                 memberIds: arrayUnion(user.id),
-                 memberCount: increment(1)
-             });
-             const userRef = doc(db, 'users', userId);
-             await updateDoc(userRef, { groupIds: arrayUnion(groupId) });
-         } else {
-             const request = { user: memberObject, answers: answers || [] };
-             await updateDoc(groupRef, { joinRequests: arrayUnion(request) });
-             const admins = group.admins || [group.creator];
-             for (const admin of admins) {
-                 await _createNotification(admin.id, 'group_join_request', user, { groupId, groupName: group.name });
-             }
-         }
-         return true;
-    },
-    async getAgoraToken(channelName: string, uid: string | number): Promise<string | null> {
+    getAgoraToken: async (channelName: string, uid: string | number): Promise<string | null> => {
         const TOKEN_SERVER_URL = '/api/proxy';
         try {
             const response = await fetch(`${TOKEN_SERVER_URL}?channelName=${channelName}&uid=${uid}`);

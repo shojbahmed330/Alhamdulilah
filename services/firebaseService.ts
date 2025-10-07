@@ -1,10 +1,8 @@
-
 // @ts-nocheck
 import {
     getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, addDoc, deleteDoc, onSnapshot,
     query, where, orderBy, limit, runTransaction, writeBatch, documentId,
-    serverTimestamp, increment, arrayUnion, arrayRemove, deleteField, Timestamp,
-    type DocumentSnapshot, type QuerySnapshot
+    serverTimestamp, increment, arrayUnion, arrayRemove, deleteField, Timestamp
 } from 'firebase/firestore';
 import {
     getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
