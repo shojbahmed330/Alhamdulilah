@@ -23,15 +23,22 @@ The JSON object must have:
 2. An optional "slots" object: For intents that require extra information (like a name or number).
 
 CONTEXTUAL RULES:
-- If a user says a simple action like "like", "comment", "share", "save post", "hide post", "copy link", "report post" or "open profile" without specifying a target name, assume they mean the currently active post on the screen. The app will handle the context. Your job is just to return the base intent (e.g., "intent_like").
+- If a user says a simple action like "share", "save post", "hide post", "copy link", "report post" or "open profile" without specifying a target name, assume they mean the currently active post on the screen. The app will handle the context. Your job is just to return the base intent (e.g., "intent_share").
+- For reaction commands like "like this post", "love this post", "haha react koro", extract the reaction type.
+- For commenting commands like "comment on this post [text]", extract the comment text.
 - If the user says "my profile", "amar profile", or similar, the intent MUST be 'intent_open_profile' and there MUST NOT be a 'target_name' slot.
 - If a command is "next" or "previous", it could mean the next post in a feed, or the next image in a multi-image view. The app has context. You can use 'intent_next_post' for generic next commands, and 'intent_next_image' if the user explicitly says 'next image' or 'porer chobi'.
 
 BENGALI & BANGLISH EXAMPLES:
 Your primary goal is to map various phrasings to the correct intent. Be flexible with synonyms and phrasings.
 - "home page e jao", "amar feed dekhao", "news feed", "প্রথম পাতা" -> "intent_open_feed"
-- "like koro", "bhalo legeche", "লাইক" -> "intent_like"
-- "comment koro", "montobbo koro", "একটা মন্তব্য কর" -> "intent_comment"
+- "like koro", "like this post" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "like" } }
+- "love dao", "bhalobasha" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "love" } }
+- "haha react koro", "hashi" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "haha" } }
+- "comment on this post", "ei post a comment koro", "comment koro", "ei chobi te comment koro" -> "intent_comment"
+- "comment on this post this is nice", "ei post e comment koro eta sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "this is nice" } }
+- "ei chobi te comment koro onek sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "onek sundor" } }
+- "post my comment", "comment post koro" -> "intent_post_comment"
 - "share koro", "শেয়ার" -> "intent_share"
 - "post koro", "kichu likho", "নতুন পোস্ট" -> "intent_create_post"
 - "amar bondhuder list dekhao", "friends list", "আমার বন্ধু" -> "intent_open_friends_page"
@@ -47,6 +54,9 @@ Your primary goal is to map various phrasings to the correct intent. Be flexible
 - "hide this", "eta lukao" -> "intent_hide_post"
 - "copy link", "link ta copy koro" -> "intent_copy_link"
 - "report this post" -> "intent_report_post"
+- "open this post", "ei post kholo", "post ti open koro" -> "intent_open_post_viewer"
+- "next image", "porer chobi" -> "intent_next_image"
+- "comment on this image beautiful" -> { "intent": "intent_add_comment_to_image", "slots": { "comment_text": "beautiful" } }
 - "create a group named Family", "Family name ekta group kholo" -> { "intent": "intent_create_group", "slots": { "group_name": "Family" } }
 - "open groups", "group gulo dekhao" -> "intent_open_groups_hub"
 - "create a story", "story banao" -> "intent_create_story"
@@ -70,16 +80,19 @@ let NLU_INTENT_LIST = `
 - intent_previous_post
 - intent_next_image
 - intent_previous_image
+- intent_open_post_viewer
 - intent_create_post
 - intent_create_voice_post
 - intent_stop_recording
 - intent_post_confirm
 - intent_re_record
 - intent_comment
+- intent_add_comment_text (extracts 'comment_text')
+- intent_add_comment_to_image (extracts 'comment_text')
 - intent_post_comment
 - intent_search_user (extracts 'target_name')
 - intent_select_result (extracts 'index')
-- intent_like (extracts 'target_name')
+- intent_react_to_post (extracts 'reaction_type')
 - intent_share
 - intent_save_post
 - intent_hide_post
@@ -203,7 +216,7 @@ export const geminiService = {
     
     let dynamicContext = "";
     if (context?.userNames && context.userNames.length > 0) {
-        dynamicContext += `\nFor intents that require a 'target_name' (like open_profile, send_message, add_friend, like, block_user, etc.), the user might say one of these names: [${context.userNames.join(', ')}]. Extract the name exactly as it appears in this list if you find a match.`;
+        dynamicContext += `\nFor intents that require a 'target_name' (like open_profile, send_message, add_friend, etc.), the user might say one of these names: [${context.userNames.join(', ')}]. Extract the name exactly as it appears in this list if you find a match.`;
     }
      if (context?.groupNames && context.groupNames.length > 0) {
         dynamicContext += `\nFor intents related to groups (like join_group, leave_group, etc.), here are some available groups: [${context.groupNames.join(', ')}].`;
@@ -235,6 +248,8 @@ export const geminiService = {
                     setting: { type: Type.STRING },
                     message_content: { type: Type.STRING },
                     emoji_type: { type: Type.STRING },
+                    reaction_type: { type: Type.STRING },
+                    comment_text: { type: Type.STRING },
                     prompt: { type: Type.STRING },
                     sponsor_name: { type: Type.STRING },
                     caption_text: { type: Type.STRING },
