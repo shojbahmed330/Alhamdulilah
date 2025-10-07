@@ -150,21 +150,29 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   
   const handleCommand = useCallback(async (command: string) => {
     try {
+        // Use index 0 as a fallback if no post is actively selected yet.
         const postIndex = (currentPostIndex < 0 && visiblePosts.length > 0) ? 0 : currentPostIndex;
         const activePost = visiblePosts[postIndex];
 
         const userNamesOnScreen = posts.map(p => p.isSponsored ? p.sponsorName as string : p.author.name);
         const allContextNames = [...userNamesOnScreen, ...friends.map(f => f.name)];
+        
         const intentResponse = await geminiService.processIntent(command, { 
             userNames: [...new Set(allContextNames)],
             active_author_name: activePost ? activePost.author.name : undefined
         });
         
-        const isGenericPostCommand = /this post|ei post|ei chobi|post ti|post ta/i.test(command);
+        // --- DEFENSIVE LOGIC ---
+        // Check if the command is a generic one that refers to the current post context.
+        const isGenericPostCommand = /this post|ei post|ei chobi|post ti|post ta/i.test(command.toLowerCase());
+        
+        // If it's a generic command and the AI hallucinated a target_name, delete it.
+        // This forces the app to use the `activePost` context.
         if (isGenericPostCommand && intentResponse.slots?.target_name) {
-            console.log(`Overriding hallucinated target_name: ${intentResponse.slots.target_name}`);
+            console.warn(`Defensive override: Ignoring hallucinated target_name '${intentResponse.slots.target_name}' for generic command.`);
             delete intentResponse.slots.target_name;
         }
+        // --- END DEFENSIVE LOGIC ---
 
         const { intent, slots } = intentResponse;
 
@@ -224,22 +232,27 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                 onReportPost(activePost);
             }
             break;
+            
+          // Consolidated block for all actions that target a post (either by name or context)
           case 'intent_add_comment_text':
           case 'intent_open_post_viewer':
           case 'intent_comment':
           case 'intent_view_comments':
-          case 'intent_view_comments_by_author':
-            {
-                const targetPostByName = slots?.target_name
-                    ? visiblePosts.find(p => !p.isSponsored && p.author.name.toLowerCase() === (slots.target_name as string).toLowerCase())
-                    : null;
+          case 'intent_view_comments_by_author': {
+                let targetPost: Post | null = null;
                 
-                const targetPost = targetPostByName || activePost;
+                // If a specific name was given (and not overridden by defensive logic), find that post.
+                if (slots?.target_name) {
+                    targetPost = visiblePosts.find(p => !p.isSponsored && p.author.name.toLowerCase() === (slots.target_name as string).toLowerCase()) || null;
+                } else {
+                    // Otherwise, use the active post from the screen context.
+                    targetPost = activePost;
+                }
 
                 if (targetPost) {
                     if (intent === 'intent_open_post_viewer') {
                         onOpenPhotoViewer(targetPost);
-                    } else {
+                    } else { // All other intents in this block are comment-related
                         const commentText = slots?.comment_text as string | undefined;
                         onOpenComments(targetPost, undefined, commentText);
                         if (commentText) {
@@ -247,10 +260,13 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                         }
                     }
                 } else if (slots?.target_name) {
-                    onSetTtsMessage(`I can't find a post by ${slots.target_name}.`);
+                    onSetTtsMessage(`I can't find a post by ${slots.target_name} on your screen.`);
+                } else {
+                    onSetTtsMessage(`Sorry, I couldn't figure out which post you meant.`);
                 }
                 break;
             }
+
           case 'intent_add_text_to_story':
             if (slots?.text) {
                 onNavigate(AppView.CREATE_STORY, { initialText: slots.text as string });
