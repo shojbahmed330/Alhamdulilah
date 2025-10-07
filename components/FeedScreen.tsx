@@ -514,9 +514,6 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
           case 'intent_open_rooms_hub':
               onNavigate(AppView.ROOMS_HUB);
               break;
-          case 'intent_open_groups_hub':
-              onNavigate(AppView.GROUPS_HUB);
-              break;
           case 'intent_open_audio_rooms':
               onNavigate(AppView.ROOMS_LIST);
               break;
