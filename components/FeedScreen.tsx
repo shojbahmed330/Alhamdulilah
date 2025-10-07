@@ -279,8 +279,10 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
               break;
           case 'intent_open_profile':
             if (slots?.target_name) {
+              onSetTtsMessage(`Opening profile for ${slots.target_name as string}.`);
               onOpenProfile(slots.target_name as string);
             } else {
+              onSetTtsMessage("Opening your profile.");
               onOpenProfile(currentUser.username);
             }
             break;

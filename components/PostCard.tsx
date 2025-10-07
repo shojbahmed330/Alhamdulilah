@@ -124,6 +124,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, isActive,
   const longPressTimer = useRef<number | null>(null);
   const pickerTimeout = useRef<number | null>(null);
   const [isReactionModalOpen, setIsReactionModalOpen] = useState(false);
+  const [isAnimatingReaction, setIsAnimatingReaction] = useState(false);
 
 
   const myReaction = React.useMemo(() => {
@@ -192,15 +193,23 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, isActive,
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   
+  const triggerReactionAnimation = () => {
+    if (isAnimatingReaction) return;
+    setIsAnimatingReaction(true);
+    setTimeout(() => setIsAnimatingReaction(false), 400);
+  };
+  
   const handleReaction = (e: React.MouseEvent, emoji: string) => {
       e.stopPropagation();
       onReact(post.id, emoji);
       setPickerOpen(false);
+      triggerReactionAnimation();
   }
 
   const handleDefaultReact = (e: React.MouseEvent) => {
     e.stopPropagation();
     onReact(post.id, myReaction === '👍' ? '👍' : '👍');
+    triggerReactionAnimation();
   };
   
   const handleMouseEnter = () => {
@@ -584,7 +593,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, isActive,
                               ))}
                           </div>
                       )}
-                      <button onClick={handleDefaultReact} className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-slate-800 transition-colors duration-200 ${myReaction ? REACTION_COLORS[myReaction] : 'text-fuchsia-400'}`}>
+                      <button onClick={handleDefaultReact} className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-slate-800 transition-colors duration-200 ${myReaction ? REACTION_COLORS[myReaction] : 'text-fuchsia-400'} ${isAnimatingReaction ? 'animate-jumbo' : ''}`}>
                           <span className="text-xl transition-transform duration-200 ease-in-out" style={{transform: myReaction ? 'scale(1.1)' : 'scale(1)'}}>{myReaction || '👍'}</span>
                           <span className="font-semibold text-base">React</span>
                       </button>

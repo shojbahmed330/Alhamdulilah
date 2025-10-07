@@ -393,10 +393,19 @@ export interface Call {
   endedAt?: any;
 }
 
+export interface NLUCommand {
+  intent: string;
+  slots?: { [key: string]: string | number | boolean };
+}
+
 export interface NLUResponse {
   intent: string;
-  slots?: { [key: string]: string | number };
+  slots?: {
+    [key: string]: string | number | boolean | NLUCommand[];
+    commands?: NLUCommand[];
+  };
 }
+
 
 export interface CategorizedExploreFeed {
     trending: Post[];

@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 
 export type Theme = 'light' | 'dark';
@@ -9,6 +8,8 @@ interface SettingsContextType {
     setTheme: (theme: Theme) => void;
     language: Language;
     setLanguage: (language: Language) => void;
+    isContinuousListening: boolean;
+    setIsContinuousListening: (enabled: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -20,6 +21,10 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     const [language, setLanguageState] = useState<Language>(() => {
         return (localStorage.getItem('voicebook-language') as Language) || 'en';
     });
+    const [isContinuousListening, setContinuousListeningState] = useState<boolean>(() => {
+        return localStorage.getItem('voicebook-continuous-listening') === 'true';
+    });
+
 
     useEffect(() => {
         const root = window.document.documentElement;
@@ -33,15 +38,22 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     useEffect(() => {
         localStorage.setItem('voicebook-language', language);
     }, [language]);
+    
+    useEffect(() => {
+        localStorage.setItem('voicebook-continuous-listening', String(isContinuousListening));
+    }, [isContinuousListening]);
 
     const setTheme = (newTheme: Theme) => setThemeState(newTheme);
     const setLanguage = (newLanguage: Language) => setLanguageState(newLanguage);
+    const setIsContinuousListening = (enabled: boolean) => setContinuousListeningState(enabled);
 
     const value = {
         theme,
         setTheme,
         language,
         setLanguage,
+        isContinuousListening,
+        setIsContinuousListening,
     };
 
     return (

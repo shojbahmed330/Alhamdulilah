@@ -888,6 +888,13 @@ const UserApp: React.FC = () => {
   const handleOpenComments = (post: Post, commentToReplyTo?: Comment, initialText?: string) => {
     handleClosePhotoViewer();
     setCommentSheetState({ post, commentToReplyTo, initialText });
+     if (commentToReplyTo) {
+        setTtsMessage(`Replying to ${commentToReplyTo.author.name}.`);
+    } else if (initialText) {
+        setTtsMessage("Opening comments and adding your text.");
+    } else {
+        setTtsMessage(`Opening comments for ${post.author.name}'s post.`);
+    }
   };
   
   const handleReactToPost = async (postId: string, emoji: string) => {
@@ -978,6 +985,8 @@ const UserApp: React.FC = () => {
         viewerPostUnsubscribe.current();
         viewerPostUnsubscribe.current = null;
     }
+    
+    setTtsMessage(`Opening photo viewer for ${post.author.name}'s post.`);
     
     setViewerPost(post);
     setImageViewerInitialUrl(initialUrl || allUrls[0] || null);

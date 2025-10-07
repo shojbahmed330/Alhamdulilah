@@ -63,7 +63,7 @@ const SettingRowSelect: React.FC<{ icon: React.ReactNode; title: string; value: 
 
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onUpdateSettings, onUnblockUser, onDeactivateAccount, lastCommand, onSetTtsMessage, scrollState, onCommandProcessed, onGoBack }) => {
-  const { language, setLanguage } = useSettings();
+  const { language, setLanguage, isContinuousListening, setIsContinuousListening } = useSettings();
   
   // Profile info state
   const [name, setName] = useState(currentUser.name);
@@ -299,6 +299,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onUpdateSe
               <button onClick={() => setLanguage('en')} className={`w-full p-2 rounded-md font-semibold transition-colors ${language === 'en' ? 'bg-slate-900 text-white' : 'text-slate-300'}`}>English</button>
               <button onClick={() => setLanguage('bn')} className={`w-full p-2 rounded-md font-semibold transition-colors ${language === 'bn' ? 'bg-slate-900 text-white' : 'text-slate-300'}`}>বাংলা</button>
           </div>
+        </div>
+
+        {/* Voice Control Settings */}
+        <div className="bg-slate-800 p-6 rounded-lg mb-6">
+            <h2 className="text-2xl font-semibold mb-2 text-rose-400">Voice Control</h2>
+            <SettingRow icon={<Icon name="mic" className="w-5 h-5"/>} title="Enable Continuous Listening">
+                <ToggleSwitch enabled={isContinuousListening} onChange={setIsContinuousListening} />
+            </SettingRow>
+            <p className="text-sm text-slate-400 mt-2 pl-14">When enabled, the microphone will stay active after a command. You won't need to press the mic button each time.</p>
         </div>
 
 
