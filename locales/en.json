@@ -1,4 +1,3 @@
-
 {
   "common": {
     "loading": "Loading...",
@@ -209,7 +208,7 @@
     "comment_stopped": "Comment recorded for {{duration}} seconds. Say 'post comment' to publish or 're-record' to redo.",
     "comment_post_success": "Your comment has been posted.",
     "comment_suspended": "Your commenting privileges have been temporarily suspended.",
-    "like_success": "You liked {{author}}'s post.",
+    "like_success": "You reacted to {{author}}'s post.",
     "error_generic": "Sorry, I didn't catch that. Could you say it again, please?",
     "error_mic_permission": "Microphone access denied. Please enable it in browser settings.",
     "error_mic_not_found": "Microphone not found. Please ensure it's connected and enabled.",
@@ -280,6 +279,19 @@
     "lead_form_submitted": "Thank you! Your information has been sent.",
     "lead_form_error": "Sorry, there was an error submitting your information.",
     "friend_removed": "{{name}} has been removed from your friends.",
-    "request_cancelled": "Friend request to {{name}} has been cancelled."
+    "request_cancelled": "Friend request to {{name}} has been cancelled.",
+    "post_saved": "Post saved.",
+    "post_unsaved": "Post removed from saved.",
+    "post_hidden": "Post hidden from your feed.",
+    "link_copied": "Link copied to clipboard.",
+    "report_submitted_thanks": "Thank you for your report. We will review it shortly.",
+    "report_submit_error": "Sorry, there was an error submitting your report.",
+    "scrolling_down": "Scrolling down.",
+    "scrolling_up": "Scrolling up.",
+    "scrolling_stopped": "Scrolling stopped.",
+    "navigating_to": "Opening {{page}}.",
+    "dictation_started_post": "Dictation started for post. Say 'stop dictation' to finish.",
+    "dictation_started_comment": "Dictation started for comment. Say 'stop dictation' to finish.",
+    "dictation_stopped": "Dictation finished."
   }
 }

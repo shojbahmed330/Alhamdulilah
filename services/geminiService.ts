@@ -81,6 +81,12 @@ If a user says multiple commands at once, you MUST identify it and return a sing
   }
 }
 
+// --- DICTATION COMMANDS ---
+For long-form text input like writing a post or comment.
+- "dictate caption", "start dictation", "voice type koro" -> "intent_dictate_caption"
+- "dictate comment" -> "intent_dictate_comment"
+- "stop dictation", "shunte thamo" -> "intent_stop_dictation"
+
 // --- BENGALI, BANGLISH & ENGLISH EXAMPLES BY CATEGORY ---
 // ... (existing examples remain the same) ...
 
@@ -90,6 +96,9 @@ If the user's intent is unclear or not in the list, you MUST use the intent "unk
 let NLU_INTENT_LIST = `
 // ... (all existing intents) ...
 - intent_chained_command
+- intent_dictate_caption
+- intent_dictate_comment
+- intent_stop_dictation
 `;
 
 // Define a schema for the Post object to be returned by Gemini
@@ -648,11 +657,180 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
     rejectJoinRequest: (groupId: string, userId: string) => firebaseService.rejectJoinRequest(groupId, userId),
     approvePost: (postId: string) => firebaseService.approvePost(postId),
     rejectPost: (postId: string) => firebaseService.rejectPost(postId),
-    joinGroup: (userId: string, groupId: string, answers?: string[]) => firebaseService.joinGroup(userId, groupId, answers),
-    getAgoraToken: (channelName: string, uid: string | number): Promise<string | null> => firebaseService.getAgoraToken(channelName, uid),
-    listenToUserGroups: (userId: string, callback: (groups: Group[]) => void) => firebaseService.listenToUserGroups(userId, callback),
-    listenToGroup: (groupId: string, callback: (group: Group | null) => void) => firebaseService.listenToGroup(groupId, callback),
-    listenToPostsForGroup: (groupId: string, callback: (posts: Post[]) => void) => firebaseService.listenToPostsForGroup(groupId, callback),
-    listenToGroupChat: (groupId: string, callback: (chat: GroupChat | null) => void) => firebaseService.listenToGroupChat(groupId, callback),
-    reactToGroupChatMessage: (groupId: string, messageId: string, userId: string, emoji: string) => firebaseService.reactToGroupChatMessage(groupId, messageId, userId, emoji),
+    joinGroup: async (userId: string, groupId: string, answers?: string[]): Promise<boolean> => {
+         const groupRef = doc(db, 'groups', groupId);
+         const user = await firebaseService.getUserProfileById(userId);
+         if (!user) return false;
+         const memberObject = { id: user.id, name: user.name, username: user.username, avatarUrl: user.avatarUrl };
+         const groupDoc = await getDoc(groupRef);
+         if (!groupDoc.exists()) return false;
+         const group = groupDoc.data() as Group;
+
+         if (group.privacy === 'public') {
+             await updateDoc(groupRef, {
+                 members: arrayUnion(memberObject),
+                 memberIds: arrayUnion(user.id),
+                 memberCount: increment(1)
+             });
+             const userRef = doc(db, 'users', userId);
+             await updateDoc(userRef, { groupIds: arrayUnion(groupId) });
+         } else {
+             const request = { user: memberObject, answers: answers || [] };
+             await updateDoc(groupRef, { joinRequests: arrayUnion(request) });
+             const admins = group.admins || [group.creator];
+             for (const admin of admins) {
+                 await _createNotification(admin.id, 'group_join_request', user, { groupId, groupName: group.name });
+             }
+         }
+         return true;
+    },
+    async getAgoraToken(channelName: string, uid: string | number): Promise<string | null> {
+        const TOKEN_SERVER_URL = '/api/proxy';
+        try {
+            const response = await fetch(`${TOKEN_SERVER_URL}?channelName=${channelName}&uid=${uid}`);
+            if (!response.ok) throw new Error(`Token server responded with ${response.status}`);
+            const data = await response.json();
+            return data.rtcToken;
+        } catch (error) {
+            console.error("Could not fetch Agora token.", error);
+            return null;
+        }
+    },
+    listenToUserGroups(userId: string, callback: (groups: Group[]) => void): () => void {
+        let groupsUnsubscribe = () => {};
+        const userUnsubscribe = onSnapshot(doc(db, 'users', userId), (userDoc) => {
+            groupsUnsubscribe(); // Cleanup previous groups listener
+    
+            if (userDoc.exists()) {
+                const groupIds = userDoc.data().groupIds || [];
+                if (groupIds.length > 0) {
+                    const q = query(collection(db, 'groups'), where(documentId(), 'in', groupIds));
+                    groupsUnsubscribe = onSnapshot(q, (groupsSnapshot) => {
+                        const groups = groupsSnapshot.docs.map(d => {
+                            const data = d.data();
+                            return {
+                                id: d.id,
+                                ...data,
+                                createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt,
+                            } as Group;
+                        });
+                        callback(groups);
+                    }, (error) => {
+                        console.warn("Could not fetch user's groups by ID list due to permissions.", error.message);
+                        callback([]);
+                    });
+                } else {
+                    callback([]); // User is in no groups
+                }
+            } else {
+                callback([]); // User document doesn't exist
+            }
+        }, (error) => {
+            console.warn("Could not fetch user's groups due to permissions or data inconsistency.", error.message);
+            callback([]);
+        });
+    
+        // Return a function that unsubscribes from both listeners
+        return () => {
+            userUnsubscribe();
+            groupsUnsubscribe();
+        };
+    },
+
+    listenToGroup(groupId: string, callback: (group: Group | null) => void): () => void {
+        const groupRef = doc(db, 'groups', groupId);
+        return onSnapshot(groupRef, (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                callback({
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt,
+                } as Group);
+            } else {
+                callback(null);
+            }
+        }, (error) => {
+            console.error(`Error listening to group ${groupId}:`, error);
+            callback(null);
+        });
+    },
+
+    listenToPostsForGroup(groupId: string, callback: (posts: Post[]) => void): () => void {
+        const postsRef = collection(db, 'posts');
+        const q = query(postsRef, where('groupId', '==', groupId), where('status', '==', 'approved'), orderBy('createdAt', 'desc'));
+        return onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(docToPost);
+            callback(posts);
+        }, (error) => {
+            console.error(`Error listening to posts for group ${groupId}:`, error);
+            callback([]); // Return empty array on error
+        });
+    },
+
+    listenToGroupChat(groupId: string, callback: (chat: GroupChat | null) => void): () => void {
+        const chatRef = doc(db, 'groupChats', groupId);
+        return onSnapshot(chatRef, (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                callback({
+                    groupId: doc.id,
+                    messages: (data.messages || []).map((msg: any) => ({
+                        ...msg,
+                        createdAt: msg.createdAt instanceof Timestamp ? msg.createdAt.toDate().toISOString() : msg.createdAt,
+                    })),
+                } as GroupChat);
+            } else {
+                console.log(`Group chat for ${groupId} not found, creating it.`);
+                setDoc(chatRef, { messages: [] })
+                    .then(() => {
+                         callback({ groupId, messages: [] });
+                    })
+                    .catch(err => {
+                        console.error("Failed to auto-create group chat:", err);
+                        callback(null);
+                    });
+            }
+        }, (error) => {
+            console.error(`Error listening to group chat ${groupId}:`, error);
+            callback(null);
+        });
+    },
+    
+    async reactToGroupChatMessage(groupId: string, messageId: string, userId: string, emoji: string): Promise<void> {
+        const chatRef = doc(db, 'groupChats', groupId);
+        await runTransaction(db, async (transaction) => {
+            const chatDoc = await transaction.get(chatRef);
+            if (!chatDoc.exists()) throw "Chat does not exist!";
+            const messages = chatDoc.data().messages || [];
+            const msgIndex = messages.findIndex((m: any) => m.id === messageId);
+            if (msgIndex === -1) throw "Message not found!";
+    
+            const message = messages[msgIndex];
+            const reactions = message.reactions || {};
+            const previousReaction = Object.keys(reactions).find(key => reactions[key].includes(userId));
+    
+            if (previousReaction) {
+                reactions[previousReaction] = reactions[previousReaction].filter((id: string) => id !== userId);
+            }
+    
+            if (previousReaction !== emoji) {
+                if (!reactions[emoji]) {
+                    reactions[emoji] = [];
+                }
+                reactions[emoji].push(userId);
+            }
+            
+            for (const key in reactions) {
+                if (reactions[key].length === 0) {
+                    delete reactions[key];
+                }
+            }
+            
+            message.reactions = reactions;
+            messages[msgIndex] = message;
+    
+            transaction.update(chatRef, { messages });
+        });
+    },
 };

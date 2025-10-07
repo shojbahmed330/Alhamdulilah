@@ -257,6 +257,34 @@
           animation: context-menu-fade-in 0.2s ease-out forwards;
       }
 
+      /* Toast Animation */
+      @keyframes toast-in {
+        from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      .animate-toast-in {
+        animation: toast-in 0.3s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+      }
+       @keyframes toast-out {
+        from {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(20px) scale(0.95);
+        }
+      }
+      .animate-toast-out {
+        animation: toast-out 0.3s ease-in forwards;
+      }
+
     </style>
     
   <script type="importmap">
