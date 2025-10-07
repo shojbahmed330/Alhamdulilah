@@ -150,7 +150,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   
   const handleCommand = useCallback(async (command: string) => {
     try {
-        const postIndex = (currentPostIndex === -1 && visiblePosts.length > 0) ? 0 : currentPostIndex;
+        const postIndex = (currentPostIndex < 0 && visiblePosts.length > 0) ? 0 : currentPostIndex;
         const activePost = visiblePosts[postIndex];
 
         const userNamesOnScreen = posts.map(p => p.isSponsored ? p.sponsorName as string : p.author.name);
@@ -160,6 +160,12 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
             active_author_name: activePost ? activePost.author.name : undefined
         });
         
+        const isGenericPostCommand = /this post|ei post|ei chobi|post ti|post ta/i.test(command);
+        if (isGenericPostCommand && intentResponse.slots?.target_name) {
+            console.log(`Overriding hallucinated target_name: ${intentResponse.slots.target_name}`);
+            delete intentResponse.slots.target_name;
+        }
+
         const { intent, slots } = intentResponse;
 
         switch (intent) {
@@ -219,38 +225,32 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
             }
             break;
           case 'intent_add_comment_text':
-            if (activePost && slots?.comment_text) {
-                onOpenComments(activePost, undefined, slots.comment_text as string);
-                onSetTtsMessage(`Comment text added. Say 'post comment' to publish.`);
-            } else if (activePost) {
-                // This can happen if the text slot fails but the intent is correct
-                onOpenComments(activePost);
-            }
-            break;
           case 'intent_open_post_viewer':
-             if (slots?.target_name) {
-                const targetName = slots.target_name as string;
-                const postToView = visiblePosts.find(p => !p.isSponsored && p.author.name === targetName);
-                if (postToView) onOpenPhotoViewer(postToView);
-            } else if (activePost) {
-                onOpenPhotoViewer(activePost);
-            }
-            break;
           case 'intent_comment':
           case 'intent_view_comments':
           case 'intent_view_comments_by_author':
-            if (slots?.target_name) {
-                const targetName = slots.target_name as string;
-                const postToView = visiblePosts.find(p => !p.isSponsored && p.author.name === targetName);
-                if (postToView) {
-                    onOpenComments(postToView);
-                } else {
-                    onSetTtsMessage(`I can't find a post by ${targetName} to view comments on.`);
+            {
+                const targetPostByName = slots?.target_name
+                    ? visiblePosts.find(p => !p.isSponsored && p.author.name.toLowerCase() === (slots.target_name as string).toLowerCase())
+                    : null;
+                
+                const targetPost = targetPostByName || activePost;
+
+                if (targetPost) {
+                    if (intent === 'intent_open_post_viewer') {
+                        onOpenPhotoViewer(targetPost);
+                    } else {
+                        const commentText = slots?.comment_text as string | undefined;
+                        onOpenComments(targetPost, undefined, commentText);
+                        if (commentText) {
+                             onSetTtsMessage(`Comment text added. Say 'post comment' to publish.`);
+                        }
+                    }
+                } else if (slots?.target_name) {
+                    onSetTtsMessage(`I can't find a post by ${slots.target_name}.`);
                 }
-            } else if (activePost && !activePost.isSponsored) {
-                onOpenComments(activePost);
+                break;
             }
-            break;
           case 'intent_add_text_to_story':
             if (slots?.text) {
                 onNavigate(AppView.CREATE_STORY, { initialText: slots.text as string });

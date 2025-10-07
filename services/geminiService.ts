@@ -26,46 +26,43 @@ CONTEXTUAL RULES:
 - An 'active_author_name' might be provided in the context. This is the author of the post currently in the center of the user's screen.
 - If a command is generic like "open this post", "comment on this post", "ei post kholo", "ei chobi te comment koro", and an 'active_author_name' is provided, your intent MUST NOT include a 'target_name' slot. The app will use the active context.
 - ONLY generate a 'target_name' slot if the user explicitly says a different name, for example, "open Shojib's post".
-- If "ei post a comment koro" is the command, the intent is 'intent_comment' with NO slots.
-- If "open this post" is the command, the intent is 'intent_open_post_viewer' with NO slots.
-- If "comment on this post nice picture" is the command, the intent is 'intent_add_comment_text' with a 'comment_text' slot, but NO 'target_name' slot.
 - For reaction commands like "like this post", "love this post", "haha react koro", extract the reaction type.
 - If the user says "my profile", "amar profile", or similar, the intent MUST be 'intent_open_profile' and there MUST NOT be a 'target_name' slot.
 - If a command is "next" or "previous", it could mean the next post in a feed, or the next image in a multi-image view. The app has context. You can use 'intent_next_post' for generic next commands, and 'intent_next_image' if the user explicitly says 'next image' or 'porer chobi'.
 
 BENGALI & BANGLISH EXAMPLES:
 Your primary goal is to map various phrasings to the correct intent. Be flexible with synonyms and phrasings.
-- "home page e jao", "amar feed dekhao", "news feed", "প্রথম পাতা" -> "intent_open_feed"
+- "home page e jao", "amar feed dekhao", "news feed", "প্রথম পাতা" -> { "intent": "intent_open_feed" }
 - "like koro", "like this post" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "like" } }
 - "love dao", "bhalobasha" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "love" } }
 - "haha react koro", "hashi" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "haha" } }
-- "comment on this post", "ei post a comment koro", "comment koro", "ei chobi te comment koro" -> "intent_comment"
-- "comment on this post this is nice", "ei post e comment koro eta sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "eta sundor" } }
+- "comment on this post", "ei post a comment koro", "comment koro", "ei chobi te comment koro" -> { "intent": "intent_comment" }
+- "ei post e comment koro eta sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "eta sundor" } }
 - "ei chobi te comment koro onek sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "onek sundor" } }
-- "post my comment", "comment post koro" -> "intent_post_comment"
-- "share koro", "শেয়ার" -> "intent_share"
-- "post koro", "kichu likho", "নতুন পোস্ট" -> "intent_create_post"
-- "amar bondhuder list dekhao", "friends list", "আমার বন্ধু" -> "intent_open_friends_page"
-- "message dekhao", "inbox a jao", "মেসেজ" -> "intent_open_messages"
-- "explore page", "explore koro", "এক্সপ্লোর" -> "intent_open_explore"
-- "scroll koro", "niche jao" -> "intent_scroll_down"
-- "upore jao" -> "intent_scroll_up"
-- "thamo", "stop scroll" -> "intent_stop_scroll"
-- "help", "ki ki command ache", "সাহায্য" -> "intent_help"
-- "amar profile" -> "intent_open_profile" (NO target_name)
+- "post my comment", "comment post koro" -> { "intent": "intent_post_comment" }
+- "share koro", "শেয়ার" -> { "intent": "intent_share" }
+- "post koro", "kichu likho", "নতুন পোস্ট" -> { "intent": "intent_create_post" }
+- "amar bondhuder list dekhao", "friends list", "আমার বন্ধু" -> { "intent": "intent_open_friends_page" }
+- "message dekhao", "inbox a jao", "মেসেজ" -> { "intent": "intent_open_messages" }
+- "explore page", "explore koro", "এক্সপ্লোর" -> { "intent": "intent_open_explore" }
+- "scroll koro", "niche jao" -> { "intent": "intent_scroll_down" }
+- "upore jao" -> { "intent": "intent_scroll_up" }
+- "thamo", "stop scroll" -> { "intent": "intent_stop_scroll" }
+- "help", "ki ki command ache", "সাহায্য" -> { "intent": "intent_help" }
+- "amar profile" -> { "intent": "intent_open_profile" }
 - "shojib er profile dekho" -> { "intent": "intent_open_profile", "slots": { "target_name": "shojib" } }
-- "save this post", "post ta save koro" -> "intent_save_post"
-- "hide this", "eta lukao" -> "intent_hide_post"
-- "copy link", "link ta copy koro" -> "intent_copy_link"
-- "report this post" -> "intent_report_post"
-- "open this post", "ei post kholo", "post ti open koro" -> "intent_open_post_viewer"
-- "next image", "porer chobi" -> "intent_next_image"
+- "save this post", "post ta save koro" -> { "intent": "intent_save_post" }
+- "hide this", "eta lukao" -> { "intent": "intent_hide_post" }
+- "copy link", "link ta copy koro" -> { "intent": "intent_copy_link" }
+- "report this post" -> { "intent": "intent_report_post" }
+- "open this post", "ei post kholo", "post ti open koro" -> { "intent": "intent_open_post_viewer" }
+- "next image", "porer chobi" -> { "intent": "intent_next_image" }
 - "comment on this image beautiful" -> { "intent": "intent_add_comment_to_image", "slots": { "comment_text": "beautiful" } }
 - "create a group named Family", "Family name ekta group kholo" -> { "intent": "intent_create_group", "slots": { "group_name": "Family" } }
-- "open groups", "group gulo dekhao" -> "intent_open_groups_hub"
-- "create a story", "story banao" -> "intent_create_story"
-- "add music", "gaan add koro" -> "intent_add_music"
-- "post story", "story ta post koro" -> "intent_post_story"
+- "open groups", "group gulo dekhao" -> { "intent": "intent_open_groups_hub" }
+- "create a story", "story banao" -> { "intent": "intent_create_story" }
+- "add music", "gaan add koro" -> { "intent": "intent_add_music" }
+- "post story", "story ta post koro" -> { "intent": "intent_post_story" }
 - "পাসওয়ার্ড পরিবর্তন কর" (change password) -> { "intent": "intent_change_password" }
 - "আমার অ্যাকাউন্ট নিষ্ক্রিয় কর" (deactivate my account) -> { "intent": "intent_deactivate_account" }
 - "সেটিংসে যাও" (go to settings) -> { "intent": "intent_open_settings" }
