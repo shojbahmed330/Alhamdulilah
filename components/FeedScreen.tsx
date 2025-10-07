@@ -150,9 +150,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   
   const handleCommand = useCallback(async (command: string) => {
     try {
-        // Use index 0 as a fallback if no post is actively selected yet.
-        const postIndex = (currentPostIndex < 0 && visiblePosts.length > 0) ? 0 : currentPostIndex;
-        const activePost = visiblePosts[postIndex];
+        const activePost = currentPostIndex >= 0 ? visiblePosts[currentPostIndex] : null;
 
         const userNamesOnScreen = posts.map(p => p.isSponsored ? p.sponsorName as string : p.author.name);
         const allContextNames = [...userNamesOnScreen, ...friends.map(f => f.name)];
@@ -164,7 +162,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
         
         // --- DEFENSIVE LOGIC ---
         // Check if the command is a generic one that refers to the current post context.
-        const isGenericPostCommand = /this post|ei post|ei chobi|post ti|post ta/i.test(command.toLowerCase());
+        const isGenericPostCommand = /this post|ei post|ei chobi|post ti|post ta|এই পোস্ট/i.test(command.toLowerCase());
         
         // If it's a generic command and the AI hallucinated a target_name, delete it.
         // This forces the app to use the `activePost` context.
@@ -188,7 +186,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
             setIsPlaying(true);
             break;
           case 'intent_play_post':
-            if (postIndex < 0 && visiblePosts.length > 0) {
+            if (currentPostIndex < 0 && visiblePosts.length > 0) {
                 isProgrammaticScroll.current = true;
                 setCurrentPostIndex(0);
             }
@@ -203,6 +201,8 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                 const emoji = VOICE_EMOJI_MAP[reactionKey] || '👍'; // Default to like
                 onReactToPost(activePost.id, emoji);
                 onSetTtsMessage(`Reacted with ${emoji} to ${activePost.author.name}'s post.`);
+            } else if (!activePost) {
+                onSetTtsMessage("Please select a post to react to.");
             }
             break;
           case 'intent_share':
@@ -215,21 +215,29 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
           case 'intent_save_post':
             if (activePost) {
                 onSavePost(activePost, true);
+            } else {
+                 onSetTtsMessage("Please select a post to save.");
             }
             break;
           case 'intent_hide_post':
             if (activePost) {
                 onHidePost(activePost.id);
+            } else {
+                 onSetTtsMessage("Please select a post to hide.");
             }
             break;
           case 'intent_copy_link':
             if (activePost) {
                 onCopyLink(activePost);
+            } else {
+                 onSetTtsMessage("Please select a post to copy its link.");
             }
             break;
           case 'intent_report_post':
             if (activePost) {
                 onReportPost(activePost);
+            } else {
+                onSetTtsMessage("Please select a post to report.");
             }
             break;
             
@@ -262,7 +270,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                 } else if (slots?.target_name) {
                     onSetTtsMessage(`I can't find a post by ${slots.target_name} on your screen.`);
                 } else {
-                    onSetTtsMessage(`Sorry, I couldn't figure out which post you meant.`);
+                    onSetTtsMessage(`Sorry, I couldn't figure out which post you meant. Please scroll to a post first.`);
                 }
                 break;
             }

@@ -38,7 +38,7 @@ Your primary goal is to map various phrasings to the correct intent. Be flexible
 - "haha react koro", "hashi" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "haha" } }
 - "comment on this post", "ei post a comment koro", "comment koro", "ei chobi te comment koro" -> { "intent": "intent_comment" }
 - "ei post e comment koro eta sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "eta sundor" } }
-- "ei chobi te comment koro onek sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "onek sundor" } }
+- "ei chobiti kholo", "ei chobi te comment koro onek sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "onek sundor" } }
 - "post my comment", "comment post koro" -> { "intent": "intent_post_comment" }
 - "share koro", "শেয়ার" -> { "intent": "intent_share" }
 - "post koro", "kichu likho", "নতুন পোস্ট" -> { "intent": "intent_create_post" }
