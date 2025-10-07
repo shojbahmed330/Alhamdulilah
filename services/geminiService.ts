@@ -23,9 +23,10 @@ The JSON object must have:
 2. An optional "slots" object: For intents that require extra information (like a name or number).
 
 CONTEXTUAL RULES:
-- CRITICAL RULE: If a user's command is generic and clearly refers to the content currently on screen (e.g., "open this post", "comment on this photo", "ei post-a comment koro", "ei chobiti kholo", "open this picture"), you MUST return a slot "is_contextual": true. You MUST NOT return a 'target_name' in this case, even if you think you know a name.
-- CRITICAL RULE: For simple commands that imply an action on the current item but don't mention a name (e.g., "comment sundor", "like", "share"), you MUST ALSO return "is_contextual": true.
-- ONLY return a 'target_name' slot if the user explicitly says a specific person's name. Example: "open Shojib's post". In this case, return 'target_name': 'Shojib' and do NOT return 'is_contextual'.
+- The app might provide 'active_author_name' in the context. This is the name of the author of the post currently visible on the user's screen.
+- CRITICAL RULE 1: If the user's command is generic AND an 'active_author_name' is provided, the command refers to that author's post. For example, if 'active_author_name' is 'Shojib' and the user says "open this post", "ei post ta kholo", or "comment on this photo", you know "this post" is Shojib's. Your response MUST include "is_contextual": true and you MUST NOT include a 'target_name' slot.
+- CRITICAL RULE 2: If the user gives a simple, action-oriented command without a name (like "like", "share", "sundor", "comment this", "ei chobita kholo"), you MUST also return "is_contextual": true and MUST NOT hallucinate a 'target_name'.
+- ONLY return a 'target_name' slot if the user explicitly says a specific person's name. Example: "open Prithibi's post". In this case, you should return 'target_name': 'Prithibi' and MUST NOT return 'is_contextual'.
 - If the user says "my profile", "amar profile", or similar, the intent MUST be 'intent_open_profile' and there MUST NOT be a 'target_name' slot.
 
 BENGALI & BANGLISH EXAMPLES:
@@ -197,6 +198,9 @@ export const geminiService = {
     }
      if (context?.themeNames && context.themeNames.length > 0) {
         dynamicContext += `\nFor 'intent_change_chat_theme', available themes are: [${context.themeNames.join(', ')}].`;
+    }
+    if (context?.active_author_name) {
+        dynamicContext += `\nThe post currently on screen belongs to '${context.active_author_name}'. Generic commands like "this post" refer to them.`;
     }
     
     const systemInstruction = NLU_SYSTEM_INSTRUCTION_BASE + "\nAvailable Intents:\n" + NLU_INTENT_LIST + dynamicContext;

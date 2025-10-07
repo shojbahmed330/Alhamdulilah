@@ -151,52 +151,53 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   const handleCommand = useCallback(async (command: string) => {
     try {
         const activePost = currentPostIndex >= 0 ? visiblePosts[currentPostIndex] : null;
+        const activeAuthorName = activePost && !activePost.isSponsored ? activePost.author.name : undefined;
 
         const userNamesOnScreen = posts.map(p => p.isSponsored ? p.sponsorName as string : p.author.name);
         const allContextNames = [...userNamesOnScreen, ...friends.map(f => f.name)];
         
         const intentResponse = await geminiService.processIntent(command, { 
-            userNames: [...new Set(allContextNames)]
+            userNames: [...new Set(allContextNames)],
+            active_author_name: activeAuthorName,
         });
         
         const { intent, slots } = intentResponse;
 
-        // Helper function to determine the target post for an action.
         const getTargetPost = (): Post | null => {
-            // 1. If the NLU explicitly marks the command as contextual, ALWAYS use the active post.
             if (slots?.is_contextual) {
                 if (!activePost) {
-                    onSetTtsMessage("Please scroll to a post first before giving a command.");
+                    onSetTtsMessage("Please scroll to a post first before giving a command like that.");
                     return null;
                 }
                 return activePost;
             }
 
-            // 2. If a specific name is mentioned, try to find that post.
             if (slots?.target_name) {
+                const targetName = (slots.target_name as string).toLowerCase();
                 const targetPost = visiblePosts.find(p => 
                     !p.isSponsored && 
-                    p.author.name.toLowerCase() === (slots.target_name as string).toLowerCase()
+                    p.author.name.toLowerCase() === targetName
                 );
                 if (targetPost) {
                     return targetPost;
-                } else {
-                    onSetTtsMessage(`Couldn't find a post by ${slots.target_name} on your screen. Applying to the active post instead.`);
+                }
+                 // If a name was found but the command was generic, it's likely a hallucination. Fallback to active post.
+                const genericCommands = ["like", "comment", "share", "open", "sundor", "beautiful"];
+                if (genericCommands.some(c => command.toLowerCase().includes(c)) && activePost) {
                     return activePost;
                 }
+                onSetTtsMessage(`Couldn't find a post by ${slots.target_name} on your screen.`);
+                return null;
             }
-
-            // 3. Fallback for simple commands without a name or contextual flag.
+            
             if (activePost) {
                 return activePost;
             }
-
-            // 4. If all else fails, there is no target.
+            
             onSetTtsMessage("Sorry, I couldn't figure out which post you meant. Please scroll to a post first.");
             return null;
         };
         
-        // List of intents that operate on a target post
         const postTargetIntents = [
             'intent_react_to_post', 'intent_share', 'intent_save_post', 'intent_hide_post',
             'intent_copy_link', 'intent_report_post', 'intent_add_comment_text',
@@ -238,17 +239,15 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                         const commentText = slots?.comment_text as string | undefined;
                         onOpenComments(targetPost, undefined, commentText);
                         if (commentText) {
-                            onSetTtsMessage(`Comment text added. Say 'post comment' to publish.`);
+                            onSetTtsMessage(`Adding comment "${commentText}". You can say 'post comment' to publish.`);
                         }
                         break;
                 }
             }
             onCommandProcessed();
-            return; // Exit after handling post-target intent
+            return;
         }
 
-
-        // --- Handle other intents (navigation, etc.) ---
         switch (intent) {
           case 'intent_next_post':
             isProgrammaticScroll.current = true;
