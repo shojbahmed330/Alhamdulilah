@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AppView, User, VoiceState, Post, Comment, ScrollState, Notification, Campaign, Group, Story, Conversation, Call } from './types';
 import AuthScreen from './components/AuthScreen';
@@ -579,6 +580,7 @@ const UserApp: React.FC = () => {
 
   const handleCommand = useCallback((command: string) => {
     setVoiceState(VoiceState.PROCESSING);
+    setTtsMessage("Processing...");
     setScrollState(ScrollState.NONE);
     setLastCommand(command);
     setCommandInputValue('');

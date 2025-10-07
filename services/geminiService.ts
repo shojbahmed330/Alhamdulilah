@@ -14,13 +14,19 @@ if (!apiKey) {
 const ai = new GoogleGenAI({ apiKey });
 
 const NLU_SYSTEM_INSTRUCTION_BASE = `
-You are a powerful NLU (Natural Language Understanding) engine for VoiceBook, a voice-controlled social media app. Your sole purpose is to analyze a user's raw text command and convert it into a structured JSON format. You must understand English, Bengali (Bangla), and "Banglish" (Bengali words typed with English characters).
+You are a powerful NLU (Natural Language Understanding) engine for VoiceBook, a voice-controlled social media app. Your sole purpose is to analyze a user's raw text command and convert it into a structured JSON format.
 
 Your response MUST be a single, valid JSON object and nothing else.
 
 The JSON object must have:
 1. An "intent" field: A string matching one of the intents from the list below.
 2. An optional "slots" object: For intents that require extra information (like a name, number, or text).
+
+// --- CRITICAL LANGUAGE & PHRASING RULES ---
+Your primary function is to be a robust multilingual interpreter.
+- **Languages:** You MUST flawlessly understand English, Bengali (বাংলা), and "Banglish" (e.g., "amar post", "profile dekhao").
+- **Synonyms & Phrasing:** Users will use many different phrases for the same action. Be flexible. "like this", "love dao", "react with a heart", "bhalobasha dilam" all map to a 'like' or 'love' reaction. "show me", "open", "dekhao" all map to an 'open' action.
+- **Regional Variations:** While you receive text, be aware that it might be a transcription of regional dialects. Interpret the user's likely intent even if the phrasing is not standard. For example, "post ta share koroin" (a dialect version) should be understood as "share this post".
 
 // --- CRITICAL CONTEXT AWARENESS RULES ---
 Your most important job is to understand the user's context. The app provides context, such as the 'active_author_name' (the author of the post or owner of the profile currently on screen). You must decide if a command is **contextual** or **targeted**.
@@ -88,13 +94,145 @@ For long-form text input like writing a post or comment.
 - "stop dictation", "shunte thamo" -> "intent_stop_dictation"
 
 // --- BENGALI, BANGLISH & ENGLISH EXAMPLES BY CATEGORY ---
-// ... (existing examples remain the same) ...
+// Navigation
+- "amar feed dekhao", "home page e jao", "go to my feed", "প্রথম পাতা" -> "intent_open_feed"
+- "explore page", "explore koro", "এক্সপ্লোর" -> "intent_open_explore"
+- "shojib er profile dekho", "open Shojib's profile" -> { "intent": "intent_open_profile", "slots": { "target_name": "Shojib" } }
+- "messages open koro", "inbox a jao", "মেসেজ" -> "intent_open_messages"
+- "back", "phire jao", "আগের পেজে যান" -> "intent_go_back"
+- "help", "ki ki command ache", "সাহায্য" -> "intent_help"
+
+// Feed Interaction
+- "next post", "porer post", "পরের পোস্টে যাও" -> "intent_next_post"
+- "like koro", "like this post" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "like", "is_contextual": true } }
+- "love dao", "bhalobasha" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "love", "is_contextual": true } }
+- "haha react koro", "hashi" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "haha", "is_contextual": true } }
+- "comment on Shojib's post", "shojiber post e comment koro" -> { "intent": "intent_comment", "slots": { "target_name": "Shojib" } }
+- "ei post e comment koro eta sundor", "comment on this post this is nice" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "this is nice", "is_contextual": true } }
+- "share koro", "শেয়ার" -> { "intent": "intent_share", "slots": { "is_contextual": true } }
+- "save this post", "post ta save koro" -> { "intent": "intent_save_post", "slots": { "is_contextual": true } }
+
+// Content Creation
+- "create a new post", "notun post", "নতুন পোস্ট" -> "intent_create_post"
+- "start voice post", "voice record koro" -> "intent_create_voice_post"
+- "stop recording", "record bondho koro" -> "intent_stop_recording"
+- "post it", "post koro" -> "intent_post_confirm"
+- "generate an image of a red car", "lal gari'r ekta chobi banao" -> { "intent": "intent_generate_image", "slots": { "prompt": "a red car" } }
 
 If the user's intent is unclear or not in the list, you MUST use the intent "unknown".
 `;
 
 let NLU_INTENT_LIST = `
-// ... (all existing intents) ...
+- intent_signup
+- intent_login
+- intent_play_post
+- intent_pause_post
+- intent_next_post
+- intent_previous_post
+- intent_next_image
+- intent_previous_image
+- intent_open_post_viewer
+- intent_create_post
+- intent_create_voice_post
+- intent_stop_recording
+- intent_post_confirm
+- intent_re_record
+- intent_comment
+- intent_add_comment_text (extracts 'comment_text')
+- intent_add_comment_to_image (extracts 'comment_text')
+- intent_post_comment
+- intent_search_user (extracts 'target_name')
+- intent_select_result (extracts 'index')
+- intent_react_to_post (extracts 'reaction_type')
+- intent_share
+- intent_save_post
+- intent_hide_post
+- intent_copy_link
+- intent_report_post
+- intent_open_profile (extracts 'target_name')
+- intent_change_avatar
+- intent_help
+- intent_go_back
+- intent_open_settings
+- intent_add_friend (extracts 'target_name')
+- intent_unfriend_user (extracts 'target_name')
+- intent_cancel_friend_request (extracts 'target_name')
+- intent_send_message (extracts 'target_name')
+- intent_save_settings
+- intent_update_profile (extracts 'field', 'value')
+- intent_update_privacy (extracts 'setting', 'value')
+- intent_update_notification_setting (extracts 'setting', 'value')
+- intent_block_user (extracts 'target_name')
+- intent_unblock_user (extracts 'target_name')
+- intent_edit_profile
+- intent_record_message
+- intent_send_chat_message
+- intent_view_comments (extracts 'target_name')
+- intent_send_text_message_with_content (extracts 'message_content')
+- intent_open_friend_requests
+- intent_accept_request (extracts 'target_name')
+- intent_decline_request (extracts 'target_name')
+- intent_scroll_up
+- intent_scroll_down
+- intent_stop_scroll
+- intent_open_messages
+- intent_open_friends_page
+- intent_open_chat (extracts 'target_name')
+- intent_change_chat_theme (extracts 'theme_name')
+- intent_delete_chat
+- intent_send_voice_emoji (extracts 'emoji_type')
+- intent_play_comment_by_author (extracts 'target_name')
+- intent_view_comments_by_author (extracts 'target_name')
+- intent_generate_image (extracts 'prompt')
+- intent_clear_image
+- intent_claim_reward
+- intent_open_ads_center
+- intent_create_campaign
+- intent_view_campaign_dashboard
+- intent_set_sponsor_name (extracts 'sponsor_name')
+- intent_set_campaign_caption (extracts 'caption_text')
+- intent_set_campaign_budget (extracts 'budget_amount')
+- intent_set_media_type (extracts 'media_type')
+- intent_launch_campaign
+- intent_change_password
+- intent_deactivate_account
+- intent_open_feed
+- intent_open_explore
+- intent_open_reels
+- intent_open_rooms_hub
+- intent_open_audio_rooms
+- intent_open_video_rooms
+- intent_create_room
+- intent_close_room
+- intent_reload_page
+- intent_open_groups_hub
+- intent_join_group (extracts 'group_name')
+- intent_leave_group (extracts 'group_name')
+- intent_create_group (extracts 'group_name')
+- intent_search_group (extracts 'search_query')
+- intent_filter_groups_by_category (extracts 'category_name')
+- intent_view_group_suggestions
+- intent_pin_post
+- intent_unpin_post
+- intent_open_group_chat
+- intent_open_group_events
+- intent_create_event
+- intent_create_poll
+- intent_vote_poll (extracts 'option_number' or 'option_text')
+- intent_view_group_by_name (extracts 'group_name')
+- intent_manage_group
+- intent_open_group_invite_page
+- intent_create_story
+- intent_add_music
+- intent_post_story
+- intent_set_story_privacy (extracts 'privacy_level')
+- intent_add_text_to_story (extracts 'text')
+- intent_react_to_message (extracts 'emoji_type')
+- intent_reply_to_message
+- intent_reply_to_last_message (extracts 'message_content')
+- intent_react_to_last_message (extracts 'emoji_type')
+- intent_unsend_message
+- intent_send_announcement (extracts 'message_content')
 - intent_chained_command
 - intent_dictate_caption
 - intent_dictate_comment
@@ -186,7 +324,7 @@ export const geminiService = {
         dynamicContext += `\nFor 'intent_change_chat_theme', available themes are: [${context.themeNames.join(', ')}].`;
     }
     if (context?.active_author_name) {
-        dynamicContext += `\nThe post currently on screen belongs to '${context.active_author_name}'. Generic commands like "this post" refer to them.`;
+        dynamicContext += `\nThe post currently on screen belongs to '${context.active_author_name}'. Generic commands like "this post" or "like this" refer to them.`;
     }
     
     const systemInstruction = NLU_SYSTEM_INSTRUCTION_BASE + "\nAvailable Intents:\n" + NLU_INTENT_LIST + dynamicContext;
@@ -657,180 +795,5 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
     rejectJoinRequest: (groupId: string, userId: string) => firebaseService.rejectJoinRequest(groupId, userId),
     approvePost: (postId: string) => firebaseService.approvePost(postId),
     rejectPost: (postId: string) => firebaseService.rejectPost(postId),
-    joinGroup: async (userId: string, groupId: string, answers?: string[]): Promise<boolean> => {
-         const groupRef = doc(db, 'groups', groupId);
-         const user = await firebaseService.getUserProfileById(userId);
-         if (!user) return false;
-         const memberObject = { id: user.id, name: user.name, username: user.username, avatarUrl: user.avatarUrl };
-         const groupDoc = await getDoc(groupRef);
-         if (!groupDoc.exists()) return false;
-         const group = groupDoc.data() as Group;
-
-         if (group.privacy === 'public') {
-             await updateDoc(groupRef, {
-                 members: arrayUnion(memberObject),
-                 memberIds: arrayUnion(user.id),
-                 memberCount: increment(1)
-             });
-             const userRef = doc(db, 'users', userId);
-             await updateDoc(userRef, { groupIds: arrayUnion(groupId) });
-         } else {
-             const request = { user: memberObject, answers: answers || [] };
-             await updateDoc(groupRef, { joinRequests: arrayUnion(request) });
-             const admins = group.admins || [group.creator];
-             for (const admin of admins) {
-                 await _createNotification(admin.id, 'group_join_request', user, { groupId, groupName: group.name });
-             }
-         }
-         return true;
-    },
-    async getAgoraToken(channelName: string, uid: string | number): Promise<string | null> {
-        const TOKEN_SERVER_URL = '/api/proxy';
-        try {
-            const response = await fetch(`${TOKEN_SERVER_URL}?channelName=${channelName}&uid=${uid}`);
-            if (!response.ok) throw new Error(`Token server responded with ${response.status}`);
-            const data = await response.json();
-            return data.rtcToken;
-        } catch (error) {
-            console.error("Could not fetch Agora token.", error);
-            return null;
-        }
-    },
-    listenToUserGroups(userId: string, callback: (groups: Group[]) => void): () => void {
-        let groupsUnsubscribe = () => {};
-        const userUnsubscribe = onSnapshot(doc(db, 'users', userId), (userDoc) => {
-            groupsUnsubscribe(); // Cleanup previous groups listener
-    
-            if (userDoc.exists()) {
-                const groupIds = userDoc.data().groupIds || [];
-                if (groupIds.length > 0) {
-                    const q = query(collection(db, 'groups'), where(documentId(), 'in', groupIds));
-                    groupsUnsubscribe = onSnapshot(q, (groupsSnapshot) => {
-                        const groups = groupsSnapshot.docs.map(d => {
-                            const data = d.data();
-                            return {
-                                id: d.id,
-                                ...data,
-                                createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt,
-                            } as Group;
-                        });
-                        callback(groups);
-                    }, (error) => {
-                        console.warn("Could not fetch user's groups by ID list due to permissions.", error.message);
-                        callback([]);
-                    });
-                } else {
-                    callback([]); // User is in no groups
-                }
-            } else {
-                callback([]); // User document doesn't exist
-            }
-        }, (error) => {
-            console.warn("Could not fetch user's groups due to permissions or data inconsistency.", error.message);
-            callback([]);
-        });
-    
-        // Return a function that unsubscribes from both listeners
-        return () => {
-            userUnsubscribe();
-            groupsUnsubscribe();
-        };
-    },
-
-    listenToGroup(groupId: string, callback: (group: Group | null) => void): () => void {
-        const groupRef = doc(db, 'groups', groupId);
-        return onSnapshot(groupRef, (doc) => {
-            if (doc.exists()) {
-                const data = doc.data();
-                callback({
-                    id: doc.id,
-                    ...data,
-                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt,
-                } as Group);
-            } else {
-                callback(null);
-            }
-        }, (error) => {
-            console.error(`Error listening to group ${groupId}:`, error);
-            callback(null);
-        });
-    },
-
-    listenToPostsForGroup(groupId: string, callback: (posts: Post[]) => void): () => void {
-        const postsRef = collection(db, 'posts');
-        const q = query(postsRef, where('groupId', '==', groupId), where('status', '==', 'approved'), orderBy('createdAt', 'desc'));
-        return onSnapshot(q, (snapshot) => {
-            const posts = snapshot.docs.map(docToPost);
-            callback(posts);
-        }, (error) => {
-            console.error(`Error listening to posts for group ${groupId}:`, error);
-            callback([]); // Return empty array on error
-        });
-    },
-
-    listenToGroupChat(groupId: string, callback: (chat: GroupChat | null) => void): () => void {
-        const chatRef = doc(db, 'groupChats', groupId);
-        return onSnapshot(chatRef, (doc) => {
-            if (doc.exists()) {
-                const data = doc.data();
-                callback({
-                    groupId: doc.id,
-                    messages: (data.messages || []).map((msg: any) => ({
-                        ...msg,
-                        createdAt: msg.createdAt instanceof Timestamp ? msg.createdAt.toDate().toISOString() : msg.createdAt,
-                    })),
-                } as GroupChat);
-            } else {
-                console.log(`Group chat for ${groupId} not found, creating it.`);
-                setDoc(chatRef, { messages: [] })
-                    .then(() => {
-                         callback({ groupId, messages: [] });
-                    })
-                    .catch(err => {
-                        console.error("Failed to auto-create group chat:", err);
-                        callback(null);
-                    });
-            }
-        }, (error) => {
-            console.error(`Error listening to group chat ${groupId}:`, error);
-            callback(null);
-        });
-    },
-    
-    async reactToGroupChatMessage(groupId: string, messageId: string, userId: string, emoji: string): Promise<void> {
-        const chatRef = doc(db, 'groupChats', groupId);
-        await runTransaction(db, async (transaction) => {
-            const chatDoc = await transaction.get(chatRef);
-            if (!chatDoc.exists()) throw "Chat does not exist!";
-            const messages = chatDoc.data().messages || [];
-            const msgIndex = messages.findIndex((m: any) => m.id === messageId);
-            if (msgIndex === -1) throw "Message not found!";
-    
-            const message = messages[msgIndex];
-            const reactions = message.reactions || {};
-            const previousReaction = Object.keys(reactions).find(key => reactions[key].includes(userId));
-    
-            if (previousReaction) {
-                reactions[previousReaction] = reactions[previousReaction].filter((id: string) => id !== userId);
-            }
-    
-            if (previousReaction !== emoji) {
-                if (!reactions[emoji]) {
-                    reactions[emoji] = [];
-                }
-                reactions[emoji].push(userId);
-            }
-            
-            for (const key in reactions) {
-                if (reactions[key].length === 0) {
-                    delete reactions[key];
-                }
-            }
-            
-            message.reactions = reactions;
-            messages[msgIndex] = message;
-    
-            transaction.update(chatRef, { messages });
-        });
-    },
+    getAgoraToken: async (channelName: string, uid: string | number): Promise<string | null> => firebaseService.getAgoraToken(channelName, uid),
 };

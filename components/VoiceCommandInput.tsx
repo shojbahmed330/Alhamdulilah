@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Icon from './Icon';
 import { VoiceState } from '../types';
@@ -29,7 +30,7 @@ const VoiceCommandInput: React.FC<VoiceCommandInputProps> = ({ onSendCommand, vo
       case VoiceState.LISTENING:
         return 'text-rose-500 animate-pulse';
       case VoiceState.PROCESSING:
-        return 'text-yellow-500';
+        return 'text-yellow-500 animate-pulse';
       default:
         return 'text-fuchsia-400';
     }

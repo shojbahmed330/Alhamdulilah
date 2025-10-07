@@ -1,5 +1,5 @@
 {
-  "name": "Backup 64, working voice command, audia and video solve, AdminPannel, ConversationsScreen Done, post done, need added future.  individual comment,  All Comment shee",
+  "name": "Working 64, working voice command, audia and video solve, AdminPannel, ConversationsScreen Done, post done, need added future.  individual comment,  All Comment shee",
   "description": "A fully voice-controlled social media application where you can sign up, log in, navigate your feed, post audio, comment, and more, all using your voice. This implementation simulates the voice experience through a text-based command interface powered by the Gemini API.",
   "requestFramePermissions": [
     "microphone",

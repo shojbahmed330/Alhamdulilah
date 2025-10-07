@@ -37,6 +37,7 @@ interface ProfileScreenProps {
   onSetScrollState: (state: ScrollState) => void;
   onNavigate: (view: AppView, props?: any) => void;
   onGoBack: () => void;
+  initialTab?: 'posts' | 'about' | 'friends' | 'saved';
 }
 
 const formatTimeAgo = (isoString?: string): string => {
@@ -68,7 +69,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     onEditProfile, onOpenComments, onOpenProfile, onReactToPost, onBlockUser, scrollState,
     onCommandProcessed, onSetScrollState, onNavigate, onGoBack,
     onCurrentUserUpdate, onPostCreated,
-    onSharePost, onOpenPhotoViewer, onDeletePost, onReportPost, onHidePost, onSavePost, onCopyLink
+    onSharePost, onOpenPhotoViewer, onDeletePost, onReportPost, onHidePost, onSavePost, onCopyLink,
+    initialTab
 }) => {
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -79,7 +81,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatus>(FriendshipStatus.NOT_FRIENDS);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
-  const [activeTab, setActiveTab] = useState<'posts' | 'about' | 'friends' | 'saved'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'about' | 'friends' | 'saved'>(initialTab || 'posts');
   
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -104,6 +106,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const requestMenuRef = useRef<HTMLDivElement>(null);
 
   const isOwnProfile = profileUser?.id === currentUser.id;
+
+  useEffect(() => {
+      if (initialTab) {
+          setActiveTab(initialTab);
+      }
+  }, [initialTab]);
 
   useEffect(() => {
     if (activeTab === 'saved' && isOwnProfile) {
