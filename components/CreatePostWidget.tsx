@@ -28,6 +28,7 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ user, onStartCreate
             <Icon name="photo" className="w-6 h-6 text-fuchsia-400"/> 
             <span className="font-semibold">Photo</span>
         </button>
+         {/* FIX: Pass selectMedia prop to trigger file selection for video. */}
          <button onClick={() => onStartCreatePost({ selectMedia: 'video' })} className="flex items-center gap-2 text-fuchsia-300 hover:bg-slate-800 px-4 py-2 rounded-lg transition-colors">
             <Icon name="video-camera" className="w-6 h-6 text-fuchsia-400"/> 
             <span className="font-semibold">Video</span>

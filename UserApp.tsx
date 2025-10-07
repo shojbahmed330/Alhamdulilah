@@ -8,7 +8,7 @@ import ReelsScreen from './components/ReelsScreen';
 import CreatePostScreen from './components/CreatePostScreen';
 import CreateReelScreen from './components/CreateReelScreen';
 import { ProfileScreen } from './components/ProfileScreen';
-import SettingsScreen from './components/SettingsScreen';
+import { SettingsScreen } from './components/SettingsScreen';
 import PostDetailScreen from './components/PostDetailScreen';
 import FriendsScreen from './components/FriendsScreen';
 import SearchResultsScreen from './components/SearchResultsScreen';
@@ -32,7 +32,6 @@ import LiveVideoRoomScreen from './components/LiveVideoRoomScreen';
 import GroupsHubScreen from './components/GroupsHubScreen';
 import GroupPageScreen from './components/GroupPageScreen';
 import ManageGroupScreen from './components/ManageGroupScreen';
-// FIX: Changed to named import to resolve module error.
 import { GroupChatScreen } from './components/GroupChatScreen';
 import GroupEventsScreen from './components/GroupEventsScreen';
 import CreateEventScreen from './components/CreateEventScreen';
@@ -971,7 +970,6 @@ const UserApp: React.FC = () => {
   };
 
   const handleOpenPhotoViewer = (post: Post, initialUrl?: string) => {
-    // FIX: Property 'imageUrls' does not exist on type 'Post'. Replaced with 'imageDetails' and corrected logic to correctly select an array of image URLs.
     let allUrls: string[] = [];
     if (post.imageDetails && post.imageDetails.length > 0) {
       allUrls = post.imageDetails.map(detail => detail.url);
@@ -1109,6 +1107,8 @@ const UserApp: React.FC = () => {
       onOpenComments: handleOpenComments,
       onSharePost: handleSharePost,
       onOpenPhotoViewer: handleOpenPhotoViewer,
+      onLogout: handleLogout,
+      groups,
     };
 
     switch (currentView.view) {
@@ -1132,7 +1132,7 @@ const UserApp: React.FC = () => {
       case AppView.PROFILE:
         return <ProfileScreen {...commonScreenProps} onOpenConversation={handleOpenConversation} onEditProfile={handleEditProfile} onBlockUser={handleBlockUser} onCurrentUserUpdate={handleCurrentUserUpdate} onPostCreated={handlePostCreated} onDeletePost={handleDeletePost} onReportPost={handleReportPost} onHidePost={handleHidePost} onSavePost={handleSavePost} onCopyLink={handleCopyLink} {...currentView.props} />;
       case AppView.SETTINGS:
-        return <SettingsScreen {...commonScreenProps} onUpdateSettings={handleUpdateSettings} onUnblockUser={handleUnblockUser} onDeactivateAccount={handleDeactivateAccount} />;
+        return <SettingsScreen {...commonScreenProps} onUpdateSettings={handleUpdateSettings} onUnblockUser={handleUnblockUser} onDeactivateAccount={handleDeactivateAccount} {...currentView.props} />;
       case AppView.POST_DETAILS:
         return <PostDetailScreen {...commonScreenProps} onReactToPost={handleReactToPost} onReactToComment={handleReactToComment} onPostComment={handlePostComment} onEditComment={handleEditComment} onDeleteComment={handleDeleteComment} onDeletePost={handleDeletePost} onReportPost={handleReportPost} onReportComment={handleReportComment} onHidePost={handleHidePost} onSavePost={handleSavePost} onCopyLink={handleCopyLink} {...currentView.props} />;
       case AppView.FRIENDS:
@@ -1146,15 +1146,15 @@ const UserApp: React.FC = () => {
       case AppView.ROOMS_HUB:
         return <RoomsHubScreen {...commonScreenProps} />;
       case AppView.ROOMS_LIST:
-        return <RoomsListScreen {...commonScreenProps} />;
+        return <RoomsListScreen {...commonScreenProps} {...currentView.props} />;
       case AppView.LIVE_ROOM:
         return <LiveRoomScreen {...commonScreenProps} {...currentView.props} />;
       case AppView.VIDEO_ROOMS_LIST:
-        return <VideoRoomsListScreen {...commonScreenProps} />;
+        return <VideoRoomsListScreen {...commonScreenProps} {...currentView.props} />;
       case AppView.LIVE_VIDEO_ROOM:
         return <LiveVideoRoomScreen {...commonScreenProps} {...currentView.props} />;
       case AppView.GROUPS_HUB:
-        return <GroupsHubScreen {...commonScreenProps} groups={groups} onGroupCreated={handleGroupCreated} />;
+        return <GroupsHubScreen {...commonScreenProps} groups={groups} onGroupCreated={handleGroupCreated} {...currentView.props} />;
       case AppView.GROUP_PAGE:
         return <GroupPageScreen {...commonScreenProps} onStartCreatePost={handleStartCreatePost} onDeletePost={handleDeletePost} onReportPost={handleReportPost} onHidePost={handleHidePost} onSavePost={handleSavePost} onCopyLink={handleCopyLink} {...currentView.props} />;
       case AppView.MANAGE_GROUP:

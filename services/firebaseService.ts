@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import {
     getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, addDoc, deleteDoc, onSnapshot,
@@ -2190,6 +2191,22 @@ export const firebaseService = {
     getStories: async (currentUserId: string): Promise<any[]> => [],
     markStoryAsViewed: async (storyId: string, userId: string) => updateDoc(doc(db, 'stories', storyId), { viewedBy: arrayUnion(userId) }),
     createStory: async (storyData: any, mediaFile: any): Promise<Story> => ({...storyData, id: '', createdAt: new Date().toISOString(), duration: 5, viewedBy: []}),
+    deleteMyStory: async (userId: string): Promise<boolean> => {
+        const storiesRef = collection(db, 'stories');
+        const q = query(storiesRef, where('author.id', '==', userId), orderBy('createdAt', 'desc'), limit(1));
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) {
+            return false;
+        }
+        const storyDoc = snapshot.docs[0];
+        try {
+            await deleteDoc(doc(db, 'stories', storyDoc.id));
+            return true;
+        } catch (error) {
+            console.error("Error deleting story:", error);
+            return false;
+        }
+    },
     async getGroupById(groupId: string): Promise<Group | null> {
         if (!groupId) return null;
         try {
@@ -2361,6 +2378,7 @@ export const firebaseService = {
     getPostById: async (postId: string): Promise<Post | null> => null,
     getPendingReports: async (): Promise<Report[]> => [],
     resolveReport: async (reportId: string, resolution: string) => {},
+    createReport: (reporter: User, content: Post | Comment | User, contentType: 'post' | 'comment' | 'user', reason: string) => firebaseService.createReport(reporter, content, contentType, reason),
     banUser: async (userId: string): Promise<boolean> => true,
     unbanUser: async (userId: string): Promise<boolean> => true,
     warnUser: async (userId: string, message: string): Promise<boolean> => {

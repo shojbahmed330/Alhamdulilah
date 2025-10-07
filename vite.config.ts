@@ -5,7 +5,8 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        // FIX: Use process.env.API_KEY as per the guidelines.
+        'process.env.API_KEY': JSON.stringify(env.API_KEY),
       },
       resolve: {
         alias: {

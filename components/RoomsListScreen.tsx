@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AppView, LiveAudioRoom, User } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -6,6 +7,7 @@ import Icon from './Icon';
 interface RoomsListScreenProps {
   currentUser: User;
   onNavigate: (view: AppView, props?: any) => void;
+  startCreate?: boolean;
 }
 
 const CreateRoomModal: React.FC<{
@@ -34,12 +36,12 @@ const CreateRoomModal: React.FC<{
                     value={topic}
                     onChange={e => setTopic(e.target.value)}
                     placeholder="What's the topic of your room?"
-                    className="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg p-3 focus:ring-lime-500 focus:border-lime-500"
+                    className="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg p-3 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                     autoFocus
                 />
                 <div className="mt-6 flex justify-end gap-3">
                     <button onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-600 hover:bg-slate-500 text-white font-semibold">Cancel</button>
-                    <button onClick={handleCreate} disabled={!topic.trim() || isCreating} className="px-4 py-2 rounded-lg bg-lime-600 hover:bg-lime-500 text-black font-bold disabled:bg-slate-500">
+                    <button onClick={handleCreate} disabled={!topic.trim() || isCreating} className="px-4 py-2 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold disabled:bg-slate-500">
                         {isCreating ? 'Starting...' : 'Start Room'}
                     </button>
                 </div>
@@ -49,10 +51,10 @@ const CreateRoomModal: React.FC<{
 };
 
 
-const RoomsListScreen: React.FC<RoomsListScreenProps> = ({ currentUser, onNavigate }) => {
+const RoomsListScreen: React.FC<RoomsListScreenProps> = ({ currentUser, onNavigate, startCreate }) => {
   const [rooms, setRooms] = useState<LiveAudioRoom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [isCreateModalOpen, setCreateModalOpen] = useState(startCreate || false);
 
   useEffect(() => {
     if (!currentUser) return; // Guard against running before user is loaded
@@ -99,7 +101,7 @@ const RoomsListScreen: React.FC<RoomsListScreenProps> = ({ currentUser, onNaviga
           <h1 className="text-4xl font-bold text-slate-100 mb-4 sm:mb-0">Live Audio Rooms</h1>
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="w-full sm:w-auto bg-lime-600 hover:bg-lime-500 text-black font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full sm:w-auto bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <Icon name="mic" className="w-6 h-6"/>
             <span>Create a Room</span>
@@ -117,7 +119,7 @@ const RoomsListScreen: React.FC<RoomsListScreenProps> = ({ currentUser, onNaviga
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {rooms.map(room => (
-              <div key={room.id} className="bg-slate-800/70 border border-slate-700 rounded-xl p-5 flex flex-col justify-between hover:border-lime-500/50 transition-colors">
+              <div key={room.id} className="bg-slate-800/70 border border-slate-700 rounded-xl p-5 flex flex-col justify-between hover:border-fuchsia-500/50 transition-colors">
                 <div>
                     <h3 className="text-xl font-bold text-slate-100 mb-3 h-14">{room.topic}</h3>
                     <div className="flex items-center gap-2 mb-4">
@@ -131,7 +133,7 @@ const RoomsListScreen: React.FC<RoomsListScreenProps> = ({ currentUser, onNaviga
                         {room.listeners.length > 0 && <div className="w-7 h-7 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-200 border-2 border-slate-800">+{room.listeners.length}</div>}
                         <span className="pl-4 text-slate-400 text-sm">{room.speakers.length + room.listeners.length} listening</span>
                     </div>
-                    <button onClick={() => handleJoinRoom(room.id)} className="bg-lime-600 hover:bg-lime-500 text-black font-semibold px-4 py-2 rounded-lg text-sm transition-colors">
+                    <button onClick={() => handleJoinRoom(room.id)} className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors">
                         Join Room
                     </button>
                 </div>

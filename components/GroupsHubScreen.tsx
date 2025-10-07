@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AppView, Group, User, GroupCategory } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -8,10 +9,11 @@ import { useSettings } from '../contexts/SettingsContext';
 interface CreateGroupModalProps {
     onClose: () => void;
     onCreate: (name: string, description: string, coverUrl: string, privacy: 'public' | 'private', requiresApproval: boolean, category: GroupCategory) => Promise<void>;
+    initialName?: string;
 }
 
-const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onCreate }) => {
-    const [name, setName] = useState('');
+const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onCreate, initialName }) => {
+    const [name, setName] = useState(initialName || '');
     const [description, setDescription] = useState('');
     const [privacy, setPrivacy] = useState<'public' | 'private'>('public');
     const [requiresApproval, setRequiresApproval] = useState(false);
@@ -36,7 +38,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onCreate }
                         value={name}
                         onChange={e => setName(e.target.value)}
                         placeholder="Group Name"
-                        className="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg p-3 focus:ring-lime-500 focus:border-lime-500"
+                        className="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg p-3 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                         autoFocus
                     />
                     <textarea
@@ -44,7 +46,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onCreate }
                         onChange={e => setDescription(e.target.value)}
                         placeholder="What is this group about?"
                         rows={3}
-                        className="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg p-3 focus:ring-lime-500 focus:border-lime-500 resize-none"
+                        className="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg p-3 focus:ring-fuchsia-500 focus:border-fuchsia-500 resize-none"
                     />
                      <div>
                         <label htmlFor="category" className="block mb-2 text-sm font-medium text-slate-300">Category</label>
@@ -52,7 +54,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onCreate }
                             id="category"
                             value={category}
                             onChange={e => setCategory(e.target.value as GroupCategory)}
-                            className="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg p-3 focus:ring-lime-500 focus:border-lime-500"
+                            className="w-full bg-slate-700 border border-slate-600 text-slate-100 rounded-lg p-3 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                         >
                             {GROUP_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                         </select>
@@ -61,23 +63,23 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({ onClose, onCreate }
                          <label className="font-semibold text-slate-200">Privacy</label>
                          <div className="flex gap-4">
                              <label className="flex items-center gap-2 cursor-pointer">
-                                 <input type="radio" name="privacy" value="public" checked={privacy === 'public'} onChange={() => setPrivacy('public')} className="w-4 h-4 text-lime-600 bg-gray-700 border-gray-600 focus:ring-lime-500" />
+                                 <input type="radio" name="privacy" value="public" checked={privacy === 'public'} onChange={() => setPrivacy('public')} className="w-4 h-4 text-fuchsia-600 bg-gray-700 border-gray-600 focus:ring-fuchsia-500" />
                                  Public
                              </label>
                               <label className="flex items-center gap-2 cursor-pointer">
-                                 <input type="radio" name="privacy" value="private" checked={privacy === 'private'} onChange={() => setPrivacy('private')} className="w-4 h-4 text-lime-600 bg-gray-700 border-gray-600 focus:ring-lime-500" />
+                                 <input type="radio" name="privacy" value="private" checked={privacy === 'private'} onChange={() => setPrivacy('private')} className="w-4 h-4 text-fuchsia-600 bg-gray-700 border-gray-600 focus:ring-fuchsia-500" />
                                  Private
                              </label>
                          </div>
                          <div className="flex items-center gap-3 pt-2">
-                             <input type="checkbox" id="requiresApproval" checked={requiresApproval} onChange={e => setRequiresApproval(e.target.checked)} className="w-5 h-5 text-lime-600 bg-gray-700 border-gray-600 rounded focus:ring-lime-500"/>
+                             <input type="checkbox" id="requiresApproval" checked={requiresApproval} onChange={e => setRequiresApproval(e.target.checked)} className="w-5 h-5 text-fuchsia-600 bg-gray-700 border-gray-600 rounded focus:ring-fuchsia-500"/>
                              <label htmlFor="requiresApproval" className="text-sm font-medium text-slate-300">Require admin approval for new posts</label>
                          </div>
                     </div>
                 </div>
                 <div className="mt-6 flex justify-end gap-3">
                     <button onClick={onClose} className="px-4 py-2 rounded-lg bg-slate-600 hover:bg-slate-500 text-white font-semibold">Cancel</button>
-                    <button onClick={handleCreate} disabled={!name.trim() || !description.trim() || isCreating} className="px-4 py-2 rounded-lg bg-lime-600 hover:bg-lime-500 text-black font-bold disabled:bg-slate-500">
+                    <button onClick={handleCreate} disabled={!name.trim() || !description.trim() || isCreating} className="px-4 py-2 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold disabled:bg-slate-500">
                         {isCreating ? 'Creating...' : 'Create Group'}
                     </button>
                 </div>
@@ -94,13 +96,15 @@ interface GroupsHubScreenProps {
   onCommandProcessed: () => void;
   groups: Group[];
   onGroupCreated: (newGroup: Group) => void;
+  createWithName?: string;
+  searchQuery?: string;
 }
 
-const GroupsHubScreen: React.FC<GroupsHubScreenProps> = ({ currentUser, onNavigate, onSetTtsMessage, lastCommand, onCommandProcessed, groups, onGroupCreated }) => {
+const GroupsHubScreen: React.FC<GroupsHubScreenProps> = ({ currentUser, onNavigate, onSetTtsMessage, lastCommand, onCommandProcessed, groups, onGroupCreated, createWithName, searchQuery: initialSearchQuery }) => {
   const [suggestedGroups, setSuggestedGroups] = useState<Group[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   const [selectedCategory, setSelectedCategory] = useState<GroupCategory | 'All'>('All');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { language } = useSettings();
@@ -115,7 +119,10 @@ const GroupsHubScreen: React.FC<GroupsHubScreenProps> = ({ currentUser, onNaviga
   useEffect(() => {
     fetchSuggestedGroups();
     onSetTtsMessage(getTtsPrompt('groups_loaded', language));
-  }, [fetchSuggestedGroups, onSetTtsMessage, language]);
+    if (createWithName) {
+        setCreateModalOpen(true);
+    }
+  }, [fetchSuggestedGroups, onSetTtsMessage, language, createWithName]);
   
   const handleViewGroup = (group: Group) => {
     onNavigate(AppView.GROUP_PAGE, { groupId: group.id });
@@ -198,7 +205,7 @@ const GroupsHubScreen: React.FC<GroupsHubScreenProps> = ({ currentUser, onNaviga
           <h1 className="text-4xl font-bold text-slate-100">Groups</h1>
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="w-full sm:w-auto bg-lime-600 hover:bg-lime-500 text-black font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full sm:w-auto bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <Icon name="add-friend" className="w-6 h-6"/>
             <span>Create Group</span>
@@ -236,7 +243,7 @@ const GroupsHubScreen: React.FC<GroupsHubScreenProps> = ({ currentUser, onNaviga
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Search your groups..."
-                    className="bg-slate-800 border border-slate-700 text-slate-100 text-base rounded-full focus:ring-lime-500 focus:border-lime-500 block w-full pl-11 p-3 transition"
+                    className="bg-slate-800 border border-slate-700 text-slate-100 text-base rounded-full focus:ring-fuchsia-500 focus:border-fuchsia-500 block w-full pl-11 p-3 transition"
                 />
             </div>
              <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
@@ -246,7 +253,7 @@ const GroupsHubScreen: React.FC<GroupsHubScreenProps> = ({ currentUser, onNaviga
                         onClick={() => setSelectedCategory(category)}
                         className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors flex-shrink-0 ${
                             selectedCategory === category
-                                ? 'bg-lime-600 text-black'
+                                ? 'bg-fuchsia-600 text-white'
                                 : 'bg-slate-700/80 text-slate-300 hover:bg-slate-700'
                         }`}
                     >
@@ -269,7 +276,7 @@ const GroupsHubScreen: React.FC<GroupsHubScreenProps> = ({ currentUser, onNaviga
               <button
                 key={group.id}
                 onClick={() => handleViewGroup(group)}
-                className="w-full bg-slate-800/70 border border-slate-700 rounded-lg p-4 text-left flex flex-col sm:flex-row items-center gap-4 hover:border-lime-500/50 hover:bg-slate-800 transition-all duration-300"
+                className="w-full bg-slate-800/70 border border-slate-700 rounded-lg p-4 text-left flex flex-col sm:flex-row items-center gap-4 hover:border-fuchsia-500/50 hover:bg-slate-800 transition-all duration-300"
               >
                 <img src={group.coverPhotoUrl} alt={group.name} className="w-full sm:w-20 h-24 sm:h-20 rounded-md object-cover flex-shrink-0" />
                 <div className="flex-grow w-full">
@@ -284,14 +291,14 @@ const GroupsHubScreen: React.FC<GroupsHubScreenProps> = ({ currentUser, onNaviga
                         <p className="text-2xl font-bold text-white">{group.memberCount}</p>
                         <p className="text-sm text-slate-400">Members</p>
                     </div>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-lime-500/20 text-lime-300">{group.category}</span>
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-fuchsia-500/20 text-fuchsia-300">{group.category}</span>
                 </div>
               </button>
             ))}
           </div>
         )}
       </div>
-      {isCreateModalOpen && <CreateGroupModal onClose={() => setCreateModalOpen(false)} onCreate={handleCreateGroup} />}
+      {isCreateModalOpen && <CreateGroupModal onClose={() => setCreateModalOpen(false)} onCreate={handleCreateGroup} initialName={createWithName} />}
     </div>
   );
 };

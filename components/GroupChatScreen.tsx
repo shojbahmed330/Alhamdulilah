@@ -84,7 +84,6 @@ const MessageBubble: React.FC<{
         </div>
     );
 };
-// FIX: Changed to a named export to resolve module import error in UserApp.tsx.
 export const GroupChatScreen: React.FC<GroupChatScreenProps> = ({
   currentUser,
   groupId,
