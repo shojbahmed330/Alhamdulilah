@@ -156,31 +156,44 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
         const allContextNames = [...userNamesOnScreen, ...friends.map(f => f.name)];
         
         const intentResponse = await geminiService.processIntent(command, { 
-            userNames: [...new Set(allContextNames)],
-            active_author_name: activePost ? activePost.author.name : undefined
+            userNames: [...new Set(allContextNames)]
         });
         
         const { intent, slots } = intentResponse;
 
         // Helper function to determine the target post for an action.
         const getTargetPost = (): Post | null => {
-            // CRITICAL: Check if the command is generic and refers to the current post context.
-            const isGenericPostCommand = /this post|this picture|this photo|ei post|ei chobi|post ti|post ta|এই পোস্ট|এই ছবি|ছবিটি/i.test(command.toLowerCase());
+            // 1. If the NLU explicitly marks the command as contextual, ALWAYS use the active post.
+            if (slots?.is_contextual) {
+                if (!activePost) {
+                    onSetTtsMessage("Please scroll to a post first before giving a command.");
+                    return null;
+                }
+                return activePost;
+            }
 
-            let targetPost: Post | null = null;
-            
-            // 1. If a specific name is mentioned by the NLU, try to find that post first.
+            // 2. If a specific name is mentioned, try to find that post.
             if (slots?.target_name) {
-                targetPost = visiblePosts.find(p => !p.isSponsored && p.author.name.toLowerCase() === (slots.target_name as string).toLowerCase()) || null;
+                const targetPost = visiblePosts.find(p => 
+                    !p.isSponsored && 
+                    p.author.name.toLowerCase() === (slots.target_name as string).toLowerCase()
+                );
+                if (targetPost) {
+                    return targetPost;
+                } else {
+                    onSetTtsMessage(`Couldn't find a post by ${slots.target_name} on your screen. Applying to the active post instead.`);
+                    return activePost;
+                }
             }
-            
-            // 2. IMPORTANT OVERRIDE: If the command was generic, IGNORE the NLU's target_name and use the active post.
-            //    OR, if finding by name failed, fall back to the active post.
-            if (isGenericPostCommand || !targetPost) {
-                targetPost = activePost;
+
+            // 3. Fallback for simple commands without a name or contextual flag.
+            if (activePost) {
+                return activePost;
             }
-            
-            return targetPost;
+
+            // 4. If all else fails, there is no target.
+            onSetTtsMessage("Sorry, I couldn't figure out which post you meant. Please scroll to a post first.");
+            return null;
         };
         
         // List of intents that operate on a target post
@@ -229,8 +242,6 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                         }
                         break;
                 }
-            } else {
-                onSetTtsMessage(`Sorry, I couldn't figure out which post you meant. Please scroll to a post first.`);
             }
             onCommandProcessed();
             return; // Exit after handling post-target intent

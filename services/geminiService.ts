@@ -23,51 +23,24 @@ The JSON object must have:
 2. An optional "slots" object: For intents that require extra information (like a name or number).
 
 CONTEXTUAL RULES:
-- The context may include 'active_author_name'. This is the author of the post currently visible on the screen.
-- CRITICAL RULE: If the user command is generic and refers to the on-screen content (e.g., "open this post", "comment on this", "ei post-a comment koro", "ei chobiti kholo"), you MUST assume the target is the 'active_author_name' and you MUST NOT return a 'target_name' slot.
-- ONLY return a 'target_name' slot if the user explicitly says a different name. Example: "open Shojib's post". In this case, 'target_name' should be 'Shojib'.
-- For reaction commands like "like this post", "love this post", "haha react koro", extract the reaction type.
+- CRITICAL RULE: If a user's command is generic and clearly refers to the content currently on screen (e.g., "open this post", "comment on this photo", "ei post-a comment koro", "ei chobiti kholo", "open this picture"), you MUST return a slot "is_contextual": true. You MUST NOT return a 'target_name' in this case, even if you think you know a name.
+- CRITICAL RULE: For simple commands that imply an action on the current item but don't mention a name (e.g., "comment sundor", "like", "share"), you MUST ALSO return "is_contextual": true.
+- ONLY return a 'target_name' slot if the user explicitly says a specific person's name. Example: "open Shojib's post". In this case, return 'target_name': 'Shojib' and do NOT return 'is_contextual'.
 - If the user says "my profile", "amar profile", or similar, the intent MUST be 'intent_open_profile' and there MUST NOT be a 'target_name' slot.
-- If a command is "next" or "previous", it could mean the next post in a feed, or the next image in a multi-image view. The app has context. You can use 'intent_next_post' for generic next commands, and 'intent_next_image' if the user explicitly says 'next image' or 'porer chobi'.
 
 BENGALI & BANGLISH EXAMPLES:
-Your primary goal is to map various phrasings to the correct intent. Be flexible with synonyms and phrasings.
-- "home page e jao", "amar feed dekhao", "news feed", "প্রথম পাতা" -> { "intent": "intent_open_feed" }
-- "like koro", "like this post" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "like" } }
-- "love dao", "bhalobasha" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "love" } }
-- "haha react koro", "hashi" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "haha" } }
-- "comment on this post", "ei post a comment koro", "comment koro", "ei chobi te comment koro" -> { "intent": "intent_comment" }
-- "ei post e comment koro eta sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "eta sundor" } }
-- "ei chobiti kholo", "ei chobi te comment koro onek sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "onek sundor" } }
-- "post my comment", "comment post koro" -> { "intent": "intent_post_comment" }
-- "share koro", "শেয়ার" -> { "intent": "intent_share" }
-- "post koro", "kichu likho", "নতুন পোস্ট" -> { "intent": "intent_create_post" }
-- "amar bondhuder list dekhao", "friends list", "আমার বন্ধু" -> { "intent": "intent_open_friends_page" }
-- "message dekhao", "inbox a jao", "মেসেজ" -> { "intent": "intent_open_messages" }
-- "explore page", "explore koro", "এক্সপ্লোর" -> { "intent": "intent_open_explore" }
-- "scroll koro", "niche jao" -> { "intent": "intent_scroll_down" }
-- "upore jao" -> { "intent": "intent_scroll_up" }
-- "thamo", "stop scroll" -> { "intent": "intent_stop_scroll" }
-- "help", "ki ki command ache", "সাহায্য" -> { "intent": "intent_help" }
+- "home page e jao", "amar feed dekhao" -> { "intent": "intent_open_feed" }
+- "like koro", "like this post" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "like", "is_contextual": true } }
+- "shojib er post like koro" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "like", "target_name": "shojib" } }
+- "love dao", "bhalobasha" -> { "intent": "intent_react_to_post", "slots": { "reaction_type": "love", "is_contextual": true } }
+- "comment koro" -> { "intent": "intent_comment", "slots": { "is_contextual": true } }
+- "ei post e comment koro eta sundor", "sundor" -> { "intent": "intent_add_comment_text", "slots": { "comment_text": "eta sundor", "is_contextual": true } }
+- "ei chobita kholo", "open this post" -> { "intent": "intent_open_post_viewer", "slots": { "is_contextual": true } }
+- "shojib er post ti open koro" -> { "intent": "intent_open_post_viewer", "slots": { "target_name": "shojib" } }
+- "share koro" -> { "intent": "intent_share", "slots": { "is_contextual": true } }
 - "amar profile" -> { "intent": "intent_open_profile" }
 - "shojib er profile dekho" -> { "intent": "intent_open_profile", "slots": { "target_name": "shojib" } }
-- "save this post", "post ta save koro" -> { "intent": "intent_save_post" }
-- "hide this post", "ei post ta sorিয়ে দাও" -> { "intent": "intent_hide_post" }
-- "copy link", "link ta copy koro" -> { "intent": "intent_copy_link" }
-- "report this post" -> { "intent": "intent_report_post" }
-- "open this post", "ei post kholo", "post ti open koro" -> { "intent": "intent_open_post_viewer" }
-- "next image", "porer chobi" -> { "intent": "intent_next_image" }
-- "comment on this image beautiful" -> { "intent": "intent_add_comment_to_image", "slots": { "comment_text": "beautiful" } }
-- "create a group named Family", "Family name ekta group kholo" -> { "intent": "intent_create_group", "slots": { "group_name": "Family" } }
-- "open groups", "group gulo dekhao" -> { "intent": "intent_open_groups_hub" }
-- "create a story", "story banao" -> { "intent": "intent_create_story" }
-- "add music", "gaan add koro" -> { "intent": "intent_add_music" }
-- "post story", "story ta post koro" -> { "intent": "intent_post_story" }
-- "পাসওয়ার্ড পরিবর্তন কর" (change password) -> { "intent": "intent_change_password" }
-- "আমার অ্যাকাউন্ট নিষ্ক্রিয় কর" (deactivate my account) -> { "intent": "intent_deactivate_account" }
-- "সেটিংসে যাও" (go to settings) -> { "intent": "intent_open_settings" }
-- "রুমে যাও" (go to rooms) -> { "intent": "intent_open_rooms_hub" }
-- "shojib ke khojo" (search for shojib) -> { "intent": "intent_search_user", "slots": { "target_name": "shojib" } }
+- "save this post" -> { "intent": "intent_save_post", "slots": { "is_contextual": true } }
 
 If the user's intent is unclear or not in the list, you MUST use the intent "unknown".
 `;
@@ -225,10 +198,7 @@ export const geminiService = {
      if (context?.themeNames && context.themeNames.length > 0) {
         dynamicContext += `\nFor 'intent_change_chat_theme', available themes are: [${context.themeNames.join(', ')}].`;
     }
-    if (context?.active_author_name) {
-        dynamicContext += `\nCONTEXT: The post by '${context.active_author_name}' is currently active on the screen. Generic commands like "this post" or "ei post" refer to this post. Do not output a 'target_name' slot for these generic commands unless the user says a different, specific name.`
-    }
-
+    
     const systemInstruction = NLU_SYSTEM_INSTRUCTION_BASE + "\nAvailable Intents:\n" + NLU_INTENT_LIST + dynamicContext;
     
     try {
@@ -245,6 +215,7 @@ export const geminiService = {
               slots: {
                 type: Type.OBJECT,
                 properties: {
+                    is_contextual: { type: Type.BOOLEAN },
                     target_name: { type: Type.STRING },
                     index: { type: Type.STRING },
                     field: { type: Type.STRING },
