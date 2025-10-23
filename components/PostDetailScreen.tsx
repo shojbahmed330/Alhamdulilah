@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Post, User, Comment } from '../types';
 import { ScrollState } from '../types';
@@ -163,7 +164,7 @@ const PostDetailScreen: React.FC<PostDetailScreenProps> = ({ postId, newlyAddedC
 
   const handleCommand = useCallback(async (command: string) => {
     try {
-        const intentResponse = await geminiService.processIntent(command);
+        const intentResponse = await geminiService.processIntent(command, {});
         if (!post) return;
 
         switch (intentResponse.intent) {

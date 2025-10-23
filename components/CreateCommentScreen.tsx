@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RecordingState, User, Comment } from '../types';
 import Waveform from './Waveform';
@@ -147,6 +146,7 @@ const CreateCommentScreen: React.FC<CreateCommentScreenProps> = ({ user, postId,
              return;
         }
 
+// FIX: onCommentPosted expects two arguments: the new comment and the post ID.
         onCommentPosted(newComment, postId);
 
     } catch (error) {
@@ -158,7 +158,7 @@ const CreateCommentScreen: React.FC<CreateCommentScreenProps> = ({ user, postId,
 
   const handleCommand = useCallback(async (command: string) => {
     try {
-        const intentResponse = await geminiService.processIntent(command);
+        const intentResponse = await geminiService.processIntent(command, {});
         const lowerCommand = command.toLowerCase();
 
         if (intentResponse.intent === 'intent_go_back') {

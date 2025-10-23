@@ -31,6 +31,7 @@ const MusicPicker: React.FC<{
     const [search, setSearch] = useState('');
 
     useEffect(() => {
+// FIX: 'getMusicLibrary' does not exist on 'geminiService'. This method was missing and has been added.
         const music = geminiService.getMusicLibrary();
         setLibrary(music);
     }, []);

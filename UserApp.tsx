@@ -760,6 +760,7 @@ const UserApp: React.FC = () => {
       setIsShowingAd(false);
       setCampaignForAd(null);
 
+// FIX: 'updateVoiceCoins' does not exist on type 'typeof geminiService'. Added the method to the service.
       const success = await geminiService.updateVoiceCoins(user.id, REWARD_AD_COIN_VALUE);
 
       if (success) {
@@ -786,6 +787,7 @@ const UserApp: React.FC = () => {
 
   const handleDeductCoinsForImage = async (): Promise<boolean> => {
     if (!user) return false;
+// FIX: 'updateVoiceCoins' does not exist on type 'typeof geminiService'. Added the method to the service.
     return await geminiService.updateVoiceCoins(user.id, -IMAGE_GENERATION_COST);
   };
 

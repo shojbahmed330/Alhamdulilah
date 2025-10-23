@@ -383,6 +383,34 @@ Examples:
     }
   },
 
+  // --- Proxies for all firebaseService functions ---
+
+  // AUTH
+  onAuthStateChanged: (callback) => firebaseService.onAuthStateChanged(callback),
+  listenToCurrentUser: (userId, callback) => firebaseService.listenToCurrentUser(userId, callback),
+  signUpWithEmail: (email, pass, fullName, username) => firebaseService.signUpWithEmail(email, pass, fullName, username),
+  signInWithEmail: (identifier, pass) => firebaseService.signInWithEmail(identifier, pass),
+  signOutUser: (userId) => firebaseService.signOutUser(userId),
+  updateUserOnlineStatus: (userId, status) => firebaseService.updateUserOnlineStatus(userId, status),
+  isUsernameTaken: (username) => firebaseService.isUsernameTaken(username),
+  changePassword: (userId, currentPass, newPass) => firebaseService.changePassword(userId, currentPass, newPass),
+  deactivateAccount: (userId) => firebaseService.deactivateAccount(userId),
+  
+  // NOTIFICATIONS
+  listenToNotifications: (userId, callback) => firebaseService.listenToNotifications(userId, callback),
+  markNotificationsAsRead: (userId, notificationsToMark) => firebaseService.markNotificationsAsRead(userId, notificationsToMark),
+
+  // USERS & FRIENDS
+  getUserProfileById: (uid) => firebaseService.getUserProfileById(uid),
+  getUserById: (uid) => firebaseService.getUserProfileById(uid), // Alias for consistency
+  getUsersByIds: (userIds) => firebaseService.getUsersByIds(userIds),
+  listenToUserProfile: (username, callback) => firebaseService.listenToUserProfile(username, callback),
+  searchUsers: (query) => firebaseService.searchUsers(query),
+  updateProfile: (userId, updates) => firebaseService.updateProfile(userId, updates),
+  updateProfilePicture: (userId, base64, caption, captionStyle) => firebaseService.updateProfilePicture(userId, base64, caption, captionStyle),
+  updateCoverPhoto: (userId, base64, caption, captionStyle) => firebaseService.updateCoverPhoto(userId, base64, caption, captionStyle),
+  blockUser: (currentUserId, targetUserId) => firebaseService.blockUser(currentUserId, targetUserId),
+  unblockUser: (currentUserId, targetUserId) => firebaseService.unblockUser(currentUserId, targetUserId),
   getFriendRequests: (userId) => firebaseService.getFriendRequests(userId),
   acceptFriendRequest: (currentUserId, requestingUserId) => firebaseService.acceptFriendRequest(currentUserId, requestingUserId),
   declineFriendRequest: (currentUserId, requestingUserId) => firebaseService.declineFriendRequest(currentUserId, requestingUserId),
@@ -393,132 +421,30 @@ Examples:
   getRecommendedFriends: (userId) => firebaseService.getRecommendedFriends(userId),
   getFriendsList: (userId) => firebaseService.getFriendsList(userId),
   getCommonFriends: (userId1, userId2) => firebaseService.getCommonFriends(userId1, userId2),
-  getUserById: (userId) => firebaseService.getUserProfileById(userId),
-  getUsersByIds: (userIds) => firebaseService.getUsersByIds(userIds),
-  searchUsers: (query) => firebaseService.searchUsers(query),
-  updateProfile: (userId, updates) => firebaseService.updateProfile(userId, updates),
-  updateProfilePicture: (userId, base64, caption, captionStyle) => firebaseService.updateProfilePicture(userId, base64, caption, captionStyle),
-  updateCoverPhoto: (userId, base64, caption, captionStyle) => firebaseService.updateCoverPhoto(userId, base64, caption, captionStyle),
-  blockUser: (currentUserId, targetUserId) => firebaseService.blockUser(currentUserId, targetUserId),
-  unblockUser: (currentUserId, targetUserId) => firebaseService.unblockUser(currentUserId, targetUserId),
-  changePassword: (userId, currentPass, newPass) => firebaseService.changePassword(userId, currentPass, newPass),
-  deactivateAccount: (userId) => firebaseService.deactivateAccount(userId),
-  updateVoiceCoins: (userId, amount) => firebaseService.updateVoiceCoins(userId, amount),
+  listenToFriendRequests: (userId, callback) => firebaseService.listenToFriendRequests(userId, callback),
 
-  async generateImageForPost(prompt) {
-      try {
-          const hash = prompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const imageUrl = `https://picsum.photos/seed/${hash}/1024`;
-          const response = await fetch(imageUrl);
-          const blob = await response.blob();
-          return new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-          });
-      } catch (error) {
-          console.error("Failed to generate placeholder image:", error);
-          return null;
-      }
-  },
-
-  async editImage(base64ImageData, mimeType, prompt) {
-    try {
-        const imagePart = { inlineData: { data: base64ImageData, mimeType: mimeType } };
-        const textPart = { text: prompt };
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: [imagePart, textPart] },
-            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
-        });
-
-        for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData && part.inlineData.data) {
-                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-            }
-        }
-        return null;
-    } catch (error) {
-        console.error("Error editing image with Gemini:", error);
-        return null;
-    }
-  },
-  
-  async getCategorizedExploreFeed(userId) {
-    const posts = await firebaseService.getExplorePosts(userId);
-    if (posts.length === 0) {
-        return { trending: [], forYou: [], recent: [], funnyVoiceNotes: [], newTalent: [] };
-    }
-    const simplifiedPosts = posts.map(p => ({
-        id: p.id,
-        caption: p.caption,
-        type: p.audioUrl ? 'audio' : (p.videoUrl ? 'video' : 'image/text'),
-        reactionCount: Object.keys(p.reactions || {}).length,
-        commentCount: p.commentCount || 0,
-        createdAt: p.createdAt,
-    }));
-    const systemInstruction = `You are a social media content curator for VoiceBook. Your task is to categorize a list of posts into predefined categories based on the provided JSON data. The user ID of the person browsing is ${userId}.
-    
-    Categories are:
-    - trending: Posts with high engagement (reactionCount, commentCount) that are very recent.
-    - forYou: Posts personalized for the user. Since you don't have user history, base this on a variety of interesting, high-quality content that is likely to be engaging. Create a good mix of content types.
-    - recent: The most recently created posts, based on the 'createdAt' field.
-    - funnyVoiceNotes: Audio posts ('type': 'audio') where the caption suggests humor.
-    - newTalent: Posts from users who might be new or have less content but are showing promise. You don't have user data, so just pick some interesting posts that are not already top trending.
-
-    You will receive a JSON array of simplified post objects. You MUST return a single, valid JSON object with keys corresponding to the categories. Each key's value should be an array of post IDs (strings) belonging to that category. A post can appear in multiple categories. Ensure you return some posts in each category if possible, but don't force it if none fit. Prioritize 'trending' and 'forYou' to be well-populated. Limit each category to a maximum of 10 post IDs.
-    `;
-    const responseSchema = {
-        type: Type.OBJECT,
-        properties: {
-            trending: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of post IDs for trending content." },
-            forYou: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of post IDs for personalized content." },
-            recent: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of post IDs for recent content." },
-            funnyVoiceNotes: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of post IDs for funny voice notes." },
-            newTalent: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of post IDs for new talent." },
-        },
-        required: ["trending", "forYou", "recent", "funnyVoiceNotes", "newTalent"]
-    };
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: JSON.stringify(simplifiedPosts),
-            config: {
-                systemInstruction: systemInstruction,
-                responseMimeType: "application/json",
-                responseSchema: responseSchema,
-            },
-        });
-        const jsonString = response.text.trim();
-        const categorizedIds = JSON.parse(jsonString);
-        const postsById = new Map(posts.map(p => [p.id, p]));
-        return {
-            trending: (categorizedIds.trending || []).map((id) => postsById.get(id)).filter(Boolean),
-            forYou: (categorizedIds.forYou || []).map((id) => postsById.get(id)).filter(Boolean),
-            recent: (categorizedIds.recent || []).map((id) => postsById.get(id)).filter(Boolean),
-            funnyVoiceNotes: (categorizedIds.funnyVoiceNotes || []).map((id) => postsById.get(id)).filter(Boolean),
-            newTalent: (categorizedIds.newTalent || []).map((id) => postsById.get(id)).filter(Boolean),
-        };
-    } catch (error) {
-        console.error("Error categorizing explore feed with Gemini:", error);
-        const sortedByReactions = posts.slice().sort((a, b) => Object.keys(b.reactions || {}).length - Object.keys(a.reactions || {}).length);
-        return {
-            trending: sortedByReactions.slice(0, 10),
-            forYou: posts.slice(0, 10).sort(() => 0.5 - Math.random()), // Shuffle
-            recent: posts.slice(0, 10),
-            funnyVoiceNotes: posts.filter(p => p.audioUrl && p.caption?.toLowerCase().match(/funny|lol|haha|😂/)).slice(0, 10),
-            newTalent: sortedByReactions.slice(10, 20),
-        };
-    }
-  },
-  getMusicLibrary: () => MOCK_MUSIC_LIBRARY,
+  // POSTS
   listenToFeedPosts: (currentUserId, friendIds, blockedUserIds, callback) => firebaseService.listenToFeedPosts(currentUserId, friendIds, blockedUserIds, callback),
   listenToReelsPosts: (userId, callback) => firebaseService.listenToReelsPosts(userId, callback),
   getPostsByIds: (postIds) => firebaseService.getPostsByIds(postIds),
   savePost: (userId, postId) => firebaseService.savePost(userId, postId),
   unsavePost: (userId, postId) => firebaseService.unsavePost(userId, postId),
+  createPost: (postData, media) => firebaseService.createPost(postData, media),
+  reactToPost: (postId, userId, emoji) => firebaseService.reactToPost(postId, userId, emoji),
+  listenToPost: (postId, callback) => firebaseService.listenToPost(postId, callback),
+  deletePost: (postId, userId) => firebaseService.deletePost(postId, userId),
+  getPostsByUser: (userId) => firebaseService.getPostsByUser(userId),
+  listenToPostsByUser: (userId, callback) => firebaseService.listenToPostsByUser(userId, callback),
+  getExplorePosts: (userId) => firebaseService.getExplorePosts(userId),
+  
+  // COMMENTS
+  createComment: (user, postId, commentData) => firebaseService.createComment(user, postId, commentData),
+  editComment: (postId, commentId, newText) => firebaseService.editComment(postId, commentId, newText),
+  deleteComment: (postId, commentId) => firebaseService.deleteComment(postId, commentId),
+  reactToComment: (postId, commentId, userId, emoji) => firebaseService.reactToComment(postId, commentId, userId, emoji),
+  reactToImage: (postId, imageId, userId, emoji) => firebaseService.reactToImage(postId, imageId, userId, emoji),
+  
+  // CHAT
   ensureChatDocumentExists: (user1, user2) => firebaseService.ensureChatDocumentExists(user1, user2),
   getChatId: (user1Id, user2Id) => firebaseService.getChatId(user1Id, user2Id),
   listenToMessages: (chatId, callback) => firebaseService.listenToMessages(chatId, callback),
@@ -532,117 +458,114 @@ Examples:
   markMessagesAsRead: (chatId, userId) => firebaseService.markMessagesAsRead(chatId, userId),
   listenToChatSettings: (chatId, callback) => firebaseService.listenToChatSettings(chatId, callback),
   updateTypingStatus: (chatId, userId, isTyping) => firebaseService.updateTypingStatus(chatId, userId, isTyping),
+  createReplySnippet: (message) => firebaseService.createReplySnippet(message),
 
-  createReplySnippet(message) {
-        let content = '';
-        if (message.isDeleted) {
-            content = "Unsent message";
-        } else {
-            switch(message.type) {
-                case 'text': content = message.text || ''; break;
-                case 'image': content = 'Image'; break;
-                case 'video': content = 'Video'; break;
-                case 'audio': content = `Voice Message · ${message.duration}s`; break;
-                default: content = '';
-            }
-        }
-        return { messageId: message.id, senderName: message.senderId, content };
-    },
-    listenToLiveAudioRooms: (callback) => firebaseService.listenToLiveAudioRooms(callback),
-    listenToLiveVideoRooms: (callback) => firebaseService.listenToLiveVideoRooms(callback),
-    listenToAudioRoom: (roomId, callback) => firebaseService.listenToRoom(roomId, 'audio', callback),
-    listenToVideoRoom: (roomId, callback) => firebaseService.listenToRoom(roomId, 'video', callback),
-    createLiveAudioRoom: (host, topic) => firebaseService.createLiveAudioRoom(host, topic),
-    createLiveVideoRoom: (host, topic) => firebaseService.createLiveVideoRoom(host, topic),
-    joinLiveAudioRoom: (userId, roomId) => firebaseService.joinLiveAudioRoom(userId, roomId),
-    joinLiveVideoRoom: (userId, roomId) => firebaseService.joinLiveVideoRoom(userId, roomId),
-    leaveLiveAudioRoom: (userId, roomId) => firebaseService.leaveLiveAudioRoom(userId, roomId),
-    leaveLiveVideoRoom: (userId, roomId) => firebaseService.leaveLiveVideoRoom(userId, roomId),
-    endLiveAudioRoom: (userId, roomId) => firebaseService.endLiveAudioRoom(userId, roomId),
-    endLiveVideoRoom: (userId, roomId) => firebaseService.endLiveVideoRoom(userId, roomId),
-    getAudioRoomDetails: (roomId) => firebaseService.getAudioRoomDetails(roomId),
-    getRoomDetails: (roomId, type) => firebaseService.getRoomDetails(roomId, type),
-    raiseHandInAudioRoom: (userId, roomId) => firebaseService.raiseHandInAudioRoom(userId, roomId),
-    inviteToSpeakInAudioRoom: (hostId, userId, roomId) => firebaseService.inviteToSpeakInAudioRoom(hostId, userId, roomId),
-    moveToAudienceInAudioRoom: (hostId, userId, roomId) => firebaseService.moveToAudienceInAudioRoom(hostId, userId, roomId),
-    listenToLiveAudioRoomMessages: (roomId, callback) => firebaseService.listenToLiveAudioRoomMessages(roomId, callback),
-    sendLiveAudioRoomMessage: (roomId, sender, text, isHost, isSpeaker) => firebaseService.sendLiveAudioRoomMessage(roomId, sender, text, isHost, isSpeaker),
-    reactToLiveAudioRoomMessage: (roomId, messageId, userId, emoji) => firebaseService.reactToLiveAudioRoomMessage(roomId, messageId, userId, emoji),
-    listenToLiveVideoRoomMessages: (roomId, callback) => firebaseService.listenToLiveVideoRoomMessages(roomId, callback),
-    sendLiveVideoRoomMessage: (roomId, sender, text) => firebaseService.sendLiveVideoRoomMessage(roomId, sender, text),
-    updateParticipantStateInVideoRoom: (roomId, userId, updates) => firebaseService.updateParticipantStateInVideoRoom(roomId, userId, updates),
-    createCall: (caller, callee, chatId, type) => firebaseService.createCall(caller, callee, chatId, type),
-    listenToCall: (callId, callback) => firebaseService.listenToCall(callId, callback),
-    listenForIncomingCalls: (userId, callback) => firebaseService.listenForIncomingCalls(userId, callback),
-    updateCallStatus: (callId, status) => firebaseService.updateCallStatus(callId, status),
-    getAgoraToken: (channelName, uid) => firebaseService.getAgoraToken(channelName, uid),
-    getCampaignsForSponsor: (sponsorId) => firebaseService.getCampaignsForSponsor(sponsorId),
-    submitCampaignForApproval: (campaignData, transactionId) => firebaseService.submitCampaignForApproval(campaignData, transactionId),
-    getRandomActiveCampaign: () => firebaseService.getRandomActiveCampaign(),
-    trackAdView: (campaignId) => firebaseService.trackAdView(campaignId),
-    trackAdClick: (campaignId) => firebaseService.trackAdClick(campaignId),
-    submitLead: (leadData) => firebaseService.submitLead(leadData),
-    getLeadsForCampaign: (campaignId) => firebaseService.getLeadsForCampaign(campaignId),
-    getInjectableAd: (currentUser) => firebaseService.getInjectableAd(currentUser),
-    getInjectableStoryAd: (currentUser) => firebaseService.getInjectableStoryAd(currentUser),
-    getStories: (currentUserId) => firebaseService.getStories(currentUserId),
-    markStoryAsViewed: (storyId, userId) => firebaseService.markStoryAsViewed(storyId, userId),
-    createStory: (storyData, mediaFile) => firebaseService.createStory(storyData, mediaFile),
-    createStoryFromPost: (user, post) => firebaseService.createStoryFromPost(user, post),
-    listenToUserGroups: (userId, callback) => firebaseService.listenToUserGroups(userId, callback),
-    listenToGroup: (groupId, callback) => firebaseService.listenToGroup(groupId, callback),
-    getGroupById: (groupId) => firebaseService.getGroupById(groupId),
-    getSuggestedGroups: (userId) => firebaseService.getSuggestedGroups(userId),
-    createGroup: (creator, name, description, coverPhotoUrl, privacy, requiresApproval, category) => firebaseService.createGroup(creator, name, description, coverPhotoUrl, privacy, requiresApproval, category),
-    joinGroup: (userId, groupId, answers) => firebaseService.joinGroup(userId, groupId, answers),
-    leaveGroup: (userId, groupId) => firebaseService.leaveGroup(userId, groupId),
-    getPostsForGroup: (groupId) => firebaseService.getPostsForGroup(groupId),
-    listenToPostsForGroup: (groupId, callback) => firebaseService.listenToPostsForGroup(groupId, callback),
-    updateGroupSettings: (groupId, settings) => firebaseService.updateGroupSettings(groupId, settings),
-    pinPost: (groupId, postId) => firebaseService.pinPost(groupId, postId),
-    unpinPost: (groupId) => firebaseService.unpinPost(groupId),
-    voteOnPoll: (userId, postId, optionIndex) => firebaseService.voteOnPoll(userId, postId, optionIndex),
-    markBestAnswer: (userId, postId, commentId) => firebaseService.markBestAnswer(userId, postId, commentId),
-    inviteFriendToGroup: (groupId, friendId) => firebaseService.inviteFriendToGroup(groupId, friendId),
-    listenToGroupChat: (groupId, callback) => firebaseService.listenToGroupChat(groupId, callback),
-    getGroupChat: (groupId) => firebaseService.getGroupChat(groupId),
-    sendGroupChatMessage: (groupId, sender, text) => firebaseService.sendGroupChatMessage(groupId, sender, text),
-    reactToGroupChatMessage: (groupId, messageId, userId, emoji) => firebaseService.reactToGroupChatMessage(groupId, messageId, userId, emoji),
-    getGroupEvents: (groupId) => firebaseService.getGroupEvents(groupId),
-    createGroupEvent: (creator, groupId, title, description, date) => firebaseService.createGroupEvent(creator, groupId, title, description, date),
-    rsvpToEvent: (userId, eventId) => firebaseService.rsvpToEvent(userId, eventId),
-    adminLogin: (email, password) => firebaseService.adminLogin(email, password),
-    getAdminDashboardStats: () => firebaseService.getAdminDashboardStats(),
-    getAllUsersForAdmin: () => firebaseService.getAllUsersForAdmin(),
-    updateUserRole: (userId, newRole) => firebaseService.updateUserRole(userId, newRole),
-    getPendingCampaigns: () => firebaseService.getPendingCampaigns(),
-    approveCampaign: (campaignId) => firebaseService.approveCampaign(campaignId),
-    rejectCampaign: (campaignId, reason) => firebaseService.rejectCampaign(campaignId, reason),
-    getAllPostsForAdmin: () => firebaseService.getAllPostsForAdmin(),
-    deletePostAsAdmin: (postId) => firebaseService.deletePostAsAdmin(postId),
-    deleteCommentAsAdmin: (commentId, postId) => firebaseService.deleteCommentAsAdmin(commentId, postId),
-    getPostById: (postId) => firebaseService.getPostById(postId),
-    getPendingReports: () => firebaseService.getPendingReports(),
-    resolveReport: (reportId, resolution) => firebaseService.resolveReport(reportId, resolution),
-    createReport: (reporter, content, contentType, reason) => firebaseService.createReport(reporter, content, contentType, reason),
-    banUser: (userId) => firebaseService.banUser(userId),
-    unbanUser: (userId) => firebaseService.unbanUser(userId),
-    warnUser: (userId, message) => firebaseService.warnUser(userId, message),
-    suspendUserCommenting: (userId, days) => firebaseService.suspendUserCommenting(userId, days),
-    liftUserCommentingSuspension: (userId) => firebaseService.liftUserCommentingSuspension(userId),
-    suspendUserPosting: (userId, days) => firebaseService.suspendUserPosting(userId, days),
-    liftUserPostingSuspension: (userId) => firebaseService.liftUserPostingSuspension(userId),
-    getUserDetailsForAdmin: (userId) => firebaseService.getUserDetailsForAdmin(userId),
-    sendSiteWideAnnouncement: (message) => firebaseService.sendSiteWideAnnouncement(message),
-    getAllCampaignsForAdmin: () => firebaseService.getAllCampaignsForAdmin(),
-    verifyCampaignPayment: (campaignId, adminId) => firebaseService.verifyCampaignPayment(campaignId, adminId),
-    adminUpdateUserProfilePicture: (userId, base64) => firebaseService.adminUpdateUserProfilePicture(userId, base64),
-    reactivateUserAsAdmin: (userId) => firebaseService.reactivateUserAsAdmin(userId),
-    promoteGroupMember: (groupId, userToPromote, newRole) => firebaseService.promoteGroupMember(groupId, userToPromote, newRole),
-    demoteGroupMember: (groupId, userToDemote, oldRole) => firebaseService.demoteGroupMember(groupId, userToDemote, oldRole),
-    removeGroupMember: (groupId, userToRemove) => firebaseService.removeGroupMember(groupId, userToRemove),
-    approveJoinRequest: (groupId, userId) => firebaseService.approveJoinRequest(groupId, userId),
-    rejectJoinRequest: (groupId, userId) => firebaseService.rejectJoinRequest(groupId, userId),
-    approvePost: (postId) => firebaseService.approvePost(postId),
-    rejectPost: (postId) => firebaseService.rejectPost(postId),
+  // ROOMS & CALLS
+  listenToLiveAudioRooms: (callback) => firebaseService.listenToLiveAudioRooms(callback),
+  listenToLiveVideoRooms: (callback) => firebaseService.listenToLiveVideoRooms(callback),
+  listenToAudioRoom: (roomId, callback) => firebaseService.listenToRoom(roomId, 'audio', callback),
+  listenToVideoRoom: (roomId, callback) => firebaseService.listenToRoom(roomId, 'video', callback),
+  createLiveAudioRoom: (host, topic) => firebaseService.createLiveAudioRoom(host, topic),
+  createLiveVideoRoom: (host, topic) => firebaseService.createLiveVideoRoom(host, topic),
+  joinLiveAudioRoom: (userId, roomId) => firebaseService.joinLiveAudioRoom(userId, roomId),
+  joinLiveVideoRoom: (userId, roomId) => firebaseService.joinLiveVideoRoom(userId, roomId),
+  leaveLiveAudioRoom: (userId, roomId) => firebaseService.leaveLiveAudioRoom(userId, roomId),
+  leaveLiveVideoRoom: (userId, roomId) => firebaseService.leaveLiveVideoRoom(userId, roomId),
+  endLiveAudioRoom: (userId, roomId) => firebaseService.endLiveAudioRoom(userId, roomId),
+  endLiveVideoRoom: (userId, roomId) => firebaseService.endLiveVideoRoom(userId, roomId),
+  getAudioRoomDetails: (roomId) => firebaseService.getAudioRoomDetails(roomId),
+  getRoomDetails: (roomId, type) => firebaseService.getRoomDetails(roomId, type),
+  raiseHandInAudioRoom: (userId, roomId) => firebaseService.raiseHandInAudioRoom(userId, roomId),
+  inviteToSpeakInAudioRoom: (hostId, userId, roomId) => firebaseService.inviteToSpeakInAudioRoom(hostId, userId, roomId),
+  moveToAudienceInAudioRoom: (hostId, userId, roomId) => firebaseService.moveToAudienceInAudioRoom(hostId, userId, roomId),
+  listenToLiveAudioRoomMessages: (roomId, callback) => firebaseService.listenToLiveAudioRoomMessages(roomId, callback),
+  sendLiveAudioRoomMessage: (roomId, sender, text, isHost, isSpeaker) => firebaseService.sendLiveAudioRoomMessage(roomId, sender, text, isHost, isSpeaker),
+  reactToLiveAudioRoomMessage: (roomId, messageId, userId, emoji) => firebaseService.reactToLiveAudioRoomMessage(roomId, messageId, userId, emoji),
+  listenToLiveVideoRoomMessages: (roomId, callback) => firebaseService.listenToLiveVideoRoomMessages(roomId, callback),
+  sendLiveVideoRoomMessage: (roomId, sender, text) => firebaseService.sendLiveVideoRoomMessage(roomId, sender, text),
+  updateParticipantStateInVideoRoom: (roomId, userId, updates) => firebaseService.updateParticipantStateInVideoRoom(roomId, userId, updates),
+  createCall: (caller, callee, chatId, type) => firebaseService.createCall(caller, callee, chatId, type),
+  listenToCall: (callId, callback) => firebaseService.listenToCall(callId, callback),
+  listenForIncomingCalls: (userId, callback) => firebaseService.listenForIncomingCalls(userId, callback),
+  updateCallStatus: (callId, status) => firebaseService.updateCallStatus(callId, status),
+  getAgoraToken: (channelName, uid) => firebaseService.getAgoraToken(channelName, uid),
+  
+  // ADS & CAMPAIGNS
+  getCampaignsForSponsor: (sponsorId) => firebaseService.getCampaignsForSponsor(sponsorId),
+  submitCampaignForApproval: (campaignData, transactionId) => firebaseService.submitCampaignForApproval(campaignData, transactionId),
+  getRandomActiveCampaign: () => firebaseService.getRandomActiveCampaign(),
+  trackAdView: (campaignId) => firebaseService.trackAdView(campaignId),
+  trackAdClick: (campaignId) => firebaseService.trackAdClick(campaignId),
+  submitLead: (leadData) => firebaseService.submitLead(leadData),
+  getLeadsForCampaign: (campaignId) => firebaseService.getLeadsForCampaign(campaignId),
+  getInjectableAd: (currentUser) => firebaseService.getInjectableAd(currentUser),
+  getInjectableStoryAd: (currentUser) => firebaseService.getInjectableStoryAd(currentUser),
+
+  // STORIES
+  getStories: (currentUserId) => firebaseService.getStories(currentUserId),
+  markStoryAsViewed: (storyId, userId) => firebaseService.markStoryAsViewed(storyId, userId),
+  createStory: (storyData, mediaFile) => firebaseService.createStory(storyData, mediaFile),
+  createStoryFromPost: (user, post) => firebaseService.createStoryFromPost(user, post),
+
+  // GROUPS
+  listenToUserGroups: (userId, callback) => firebaseService.listenToUserGroups(userId, callback),
+  listenToGroup: (groupId, callback) => firebaseService.listenToGroup(groupId, callback),
+  getGroupById: (groupId) => firebaseService.getGroupById(groupId),
+  getSuggestedGroups: (userId) => firebaseService.getSuggestedGroups(userId),
+  createGroup: (creator, name, description, coverPhotoUrl, privacy, requiresApproval, category) => firebaseService.createGroup(creator, name, description, coverPhotoUrl, privacy, requiresApproval, category),
+  joinGroup: (userId, groupId, answers) => firebaseService.joinGroup(userId, groupId, answers),
+  leaveGroup: (userId, groupId) => firebaseService.leaveGroup(userId, groupId),
+  getPostsForGroup: (groupId) => firebaseService.getPostsForGroup(groupId),
+  listenToPostsForGroup: (groupId, callback) => firebaseService.listenToPostsForGroup(groupId, callback),
+  updateGroupSettings: (groupId, settings) => firebaseService.updateGroupSettings(groupId, settings),
+  pinPost: (groupId, postId) => firebaseService.pinPost(groupId, postId),
+  unpinPost: (groupId) => firebaseService.unpinPost(groupId),
+  voteOnPoll: (userId, postId, optionIndex) => firebaseService.voteOnPoll(userId, postId, optionIndex),
+  markBestAnswer: (userId, postId, commentId) => firebaseService.markBestAnswer(userId, postId, commentId),
+  inviteFriendToGroup: (groupId, friendId) => firebaseService.inviteFriendToGroup(groupId, friendId),
+  
+  // GROUP CHAT & EVENTS
+  listenToGroupChat: (groupId, callback) => firebaseService.listenToGroupChat(groupId, callback),
+  getGroupChat: (groupId) => firebaseService.getGroupChat(groupId),
+  sendGroupChatMessage: (groupId, sender, text) => firebaseService.sendGroupChatMessage(groupId, sender, text),
+  reactToGroupChatMessage: (groupId, messageId, userId, emoji) => firebaseService.reactToGroupChatMessage(groupId, messageId, userId, emoji),
+  getGroupEvents: (groupId) => firebaseService.getGroupEvents(groupId),
+  createGroupEvent: (creator, groupId, title, description, date) => firebaseService.createGroupEvent(creator, groupId, title, description, date),
+  rsvpToEvent: (userId, eventId) => firebaseService.rsvpToEvent(userId, eventId),
+  
+  // ADMIN
+  adminLogin: (email, password) => firebaseService.adminLogin(email, password),
+  getAdminDashboardStats: () => firebaseService.getAdminDashboardStats(),
+  getAllUsersForAdmin: () => firebaseService.getAllUsersForAdmin(),
+  updateUserRole: (userId, newRole) => firebaseService.updateUserRole(userId, newRole),
+  getPendingCampaigns: () => firebaseService.getPendingCampaigns(),
+  approveCampaign: (campaignId) => firebaseService.approveCampaign(campaignId),
+  rejectCampaign: (campaignId, reason) => firebaseService.rejectCampaign(campaignId, reason),
+  getAllPostsForAdmin: () => firebaseService.getAllPostsForAdmin(),
+  deletePostAsAdmin: (postId) => firebaseService.deletePostAsAdmin(postId),
+  deleteCommentAsAdmin: (commentId, postId) => firebaseService.deleteCommentAsAdmin(commentId, postId),
+  getPostById: (postId) => firebaseService.getPostById(postId),
+  getPendingReports: () => firebaseService.getPendingReports(),
+  resolveReport: (reportId, resolution) => firebaseService.resolveReport(reportId, resolution),
+  createReport: (reporter, content, contentType, reason) => firebaseService.createReport(reporter, content, contentType, reason),
+  banUser: (userId) => firebaseService.banUser(userId),
+  unbanUser: (userId) => firebaseService.unbanUser(userId),
+  warnUser: (userId, message) => firebaseService.warnUser(userId, message),
+  suspendUserCommenting: (userId, days) => firebaseService.suspendUserCommenting(userId, days),
+  liftUserCommentingSuspension: (userId) => firebaseService.liftUserCommentingSuspension(userId),
+  suspendUserPosting: (userId, days) => firebaseService.suspendUserPosting(userId, days),
+  liftUserPostingSuspension: (userId) => firebaseService.liftUserPostingSuspension(userId),
+  getUserDetailsForAdmin: (userId) => firebaseService.getUserDetailsForAdmin(userId),
+  sendSiteWideAnnouncement: (message) => firebaseService.sendSiteWideAnnouncement(message),
+  getAllCampaignsForAdmin: () => firebaseService.getAllCampaignsForAdmin(),
+  verifyCampaignPayment: (campaignId, adminId) => firebaseService.verifyCampaignPayment(campaignId, adminId),
+  adminUpdateUserProfilePicture: (userId, base64) => firebaseService.adminUpdateUserProfilePicture(userId, base64),
+  reactivateUserAsAdmin: (userId) => firebaseService.reactivateUserAsAdmin(userId),
+  promoteGroupMember: (groupId, userToPromote, newRole) => firebaseService.promoteGroupMember(groupId, userToPromote, newRole),
+  demoteGroupMember: (groupId, userToDemote, oldRole) => firebaseService.demoteGroupMember(groupId, userToDemote, oldRole),
+  removeGroupMember: (groupId, userToRemove) => firebaseService.removeGroupMember(groupId, userToRemove),
+  approveJoinRequest: (groupId, userId) => firebaseService.approveJoinRequest(groupId, userId),
+  rejectJoinRequest: (groupId, userId) => firebaseService.rejectJoinRequest(groupId, userId),
+  approvePost: (postId) => firebaseService.approvePost(postId),
+  rejectPost: (postId) => firebaseService.rejectPost(postId),
 };

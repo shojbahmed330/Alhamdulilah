@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Icon from './Icon';
 import { User, ScrollState } from '../types';
@@ -78,7 +79,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
         const handleCommand = async () => {
             if (!lastCommand) return;
             // FIX: Use geminiService.processIntent to handle the command
-            const intentResponse = await geminiService.processIntent(lastCommand);
+// FIX: Added missing context object to `geminiService.processIntent` call.
+            const intentResponse = await geminiService.processIntent(lastCommand, {});
             if(intentResponse.intent === 'intent_save_settings') {
                 handleSaveChanges();
             }

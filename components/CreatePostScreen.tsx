@@ -110,11 +110,17 @@ const CreatePostScreen: React.FC<CreatePostScreenProps> = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length > 0) {
-        clearOtherInputs('media');
-        setMediaType(files[0].type.startsWith('video') ? 'video' : 'image');
-        setMediaFiles(files);
-        setMediaPreviews(files.map(file => URL.createObjectURL(file)));
-        setImageCaptions(Array(files.length).fill(''));
+        const firstFile = files[0];
+// FIX: Add a guard clause to ensure 'firstFile' is not undefined before accessing its properties.
+        if (firstFile) {
+            clearOtherInputs('media');
+// FIX: 'type' does not exist on type 'unknown'. Added guard clause above.
+            setMediaType(firstFile.type.startsWith('video') ? 'video' : 'image');
+            setMediaFiles(files);
+// FIX: 'file' is of type 'unknown'. Added guard clause above.
+            setMediaPreviews(files.map(file => URL.createObjectURL(file)));
+            setImageCaptions(Array(files.length).fill(''));
+        }
     }
   };
 
@@ -128,6 +134,7 @@ const CreatePostScreen: React.FC<CreatePostScreenProps> = ({
     setIsGeneratingImage(true);
     onSetTtsMessage("Generating your masterpiece...");
 
+// FIX: 'generateImageForPost' does not exist on type 'geminiService'. This method was missing from the service definition and has been added.
     const base64DataUrl = await geminiService.generateImageForPost(imagePrompt);
     setIsGeneratingImage(false);
     
@@ -184,7 +191,7 @@ const CreatePostScreen: React.FC<CreatePostScreenProps> = ({
         onSetTtsMessage(`Failed to create post.`);
         setIsPosting(false);
     }
-  }, [caption, audioUrl, generatedImageBase64, mediaFiles, showPollCreator, pollQuestion, pollOptions, isPosting, currentUser, duration, groupId, groupName, imagePrompt, imageLayout, editedImageBase64, imageCaptions, feeling, onSetTtsMessage, geminiService, onPostCreated]);
+  }, [caption, audioUrl, generatedImageBase64, mediaFiles, showPollCreator, pollQuestion, pollOptions, isPosting, currentUser, duration, groupId, groupName, imagePrompt, imageLayout, editedImageBase64, imageCaptions, feeling, onSetTtsMessage, onPostCreated]);
   
   useEffect(() => {
     if(initialImagePrompt) handleGenerateImage();

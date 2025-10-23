@@ -135,6 +135,7 @@ const ExploreScreen: React.FC<ExploreScreenProps> = (props) => {
         if (!isRefreshing) setIsLoading(true);
         setError(null);
         try {
+// FIX: 'getCategorizedExploreFeed' does not exist on type 'geminiService'. This method was missing and has been added.
             const feed = await geminiService.getCategorizedExploreFeed(currentUser.id);
             setCategorizedFeed(feed);
         } catch (err) {
