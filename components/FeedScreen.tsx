@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Post, User, ScrollState, Campaign, AppView, Story, Comment } from '../types';
 import { PostCard } from './PostCard';
@@ -260,7 +261,8 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   
   const fetchStories = useCallback(async () => {
       const realStories = await geminiService.getStories(currentUser.id);
-      const adStory = await firebaseService.getInjectableStoryAd(currentUser);
+      // FIX: Changed to geminiService for consistency
+      const adStory = await geminiService.getInjectableStoryAd(currentUser);
   
       if (adStory) {
           const adStoryGroup = {
@@ -294,7 +296,8 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
     const injectAd = async () => {
         if (!isLoading && !adInjected && posts.length > 2) {
             setAdInjected(true);
-            const adPost = await firebaseService.getInjectableAd(currentUser);
+            // FIX: Changed to geminiService for consistency
+            const adPost = await geminiService.getInjectableAd(currentUser);
             if (adPost) {
                 const newPosts = [...posts];
                 const injectionIndex = 3; 

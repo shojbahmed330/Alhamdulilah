@@ -52,10 +52,9 @@ const CreateReelScreen: React.FC<CreateReelScreenProps> = ({ currentUser, onGoBa
         onSetTtsMessage("Publishing your Reel...");
         
         try {
-            // FIX: Pass mediaFile as an array to mediaFiles property
             await firebaseService.createPost(
                 { author: currentUser, caption, captionStyle, duration: 0 },
-                { mediaFiles: videoFile ? [videoFile] : [] }
+                { mediaFiles: [videoFile] }
             );
             onReelCreated();
         } catch (error) {

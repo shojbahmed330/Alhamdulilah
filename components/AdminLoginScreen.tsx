@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { AdminUser } from '../types';
 import Icon from './Icon';
-import { firebaseService } from '../services/firebaseService';
+import { geminiService } from '../services/geminiService';
 
 interface AdminLoginScreenProps {
   onLoginSuccess: (user: AdminUser) => void;
@@ -19,7 +20,8 @@ const AdminLoginScreen: React.FC<AdminLoginScreenProps> = ({ onLoginSuccess }) =
     setIsLoading(true);
 
     try {
-      const user = await firebaseService.adminLogin(email, password);
+      // FIX: Changed to geminiService for consistency
+      const user = await geminiService.adminLogin(email, password);
       // The new adminLogin handles full authentication and authorization.
       // If it returns a user, login is successful.
       onLoginSuccess(user);

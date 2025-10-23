@@ -1,7 +1,9 @@
+
 import React, { useMemo } from 'react';
 import { User, AppView } from '../types';
 import ChatWidget from './ChatWidget';
-import { firebaseService } from '../services/firebaseService';
+// FIX: Changed to geminiService for consistency
+import { geminiService } from '../services/geminiService';
 
 interface ChatManagerProps {
   currentUser: User;
@@ -60,7 +62,8 @@ const ChatManager: React.FC<ChatManagerProps> = ({
             onMinimize={onMinimizeToggle}
             onHeaderClick={onMinimizeToggle}
             isMinimized={true}
-            unreadCount={chatUnreadCounts[firebaseService.getChatId(currentUser.id, peer.id)] || 0}
+            // FIX: Changed to geminiService for consistency
+            unreadCount={chatUnreadCounts[geminiService.getChatId(currentUser.id, peer.id)] || 0}
             setIsChatRecording={setIsChatRecording}
             onNavigate={onNavigate}
             onSetTtsMessage={onSetTtsMessage}
@@ -95,7 +98,8 @@ const ChatManager: React.FC<ChatManagerProps> = ({
                 onMinimize={onMinimizeToggle}
                 onHeaderClick={onMinimizeToggle}
                 isMinimized={minimizedChats.has(peer.id)}
-                unreadCount={chatUnreadCounts[firebaseService.getChatId(currentUser.id, peer.id)] || 0}
+                // FIX: Changed to geminiService for consistency
+                unreadCount={chatUnreadCounts[geminiService.getChatId(currentUser.id, peer.id)] || 0}
                 setIsChatRecording={setIsChatRecording}
                 onNavigate={onNavigate}
                 onSetTtsMessage={onSetTtsMessage}

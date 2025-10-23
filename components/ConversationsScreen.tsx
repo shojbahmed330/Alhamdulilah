@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { User, Conversation, AppView, Message } from '../types';
 import Icon from './Icon';
@@ -255,7 +256,8 @@ const ConversationsScreen: React.FC<{
   const onlineFriends = useMemo(() => friends.filter(friend => liveUsers.get(friend.id)?.onlineStatus === 'online'), [liveUsers, friends]);
 
   useEffect(() => {
-    const unsubscribe = firebaseService.listenToConversations(currentUser.id, setConversations);
+    // FIX: Changed to geminiService for consistency
+    const unsubscribe = geminiService.listenToConversations(currentUser.id, setConversations);
     return () => unsubscribe();
   }, [currentUser.id]);
 
@@ -268,8 +270,8 @@ const ConversationsScreen: React.FC<{
       if (newPinnedIds.has(peerId)) newPinnedIds.delete(peerId);
       else newPinnedIds.add(peerId);
       setPinnedIds(newPinnedIds);
-      // FIX: Cast Array.from(Set) to string[] to resolve TypeScript error.
-      await updateProfileLists({ pinnedChatIds: Array.from(newPinnedIds) });
+      // FIX: Use spread syntax instead of Array.from for better type inference
+      await updateProfileLists({ pinnedChatIds: [...newPinnedIds] });
   };
 
   const handleArchiveToggle = async (peerId: string, withUndo: boolean = false) => {
@@ -299,16 +301,18 @@ const ConversationsScreen: React.FC<{
           }
       }
       setArchivedIds(newArchivedIds);
-      // FIX: Cast Array.from(Set) to string[] to resolve TypeScript error.
-      updateProfileLists({ archivedChatIds: Array.from(newArchivedIds), pinnedChatIds: Array.from(newPinnedIds) });
+      // FIX: Use spread syntax instead of Array.from for better type inference
+      updateProfileLists({ archivedChatIds: [...newArchivedIds], pinnedChatIds: [...newPinnedIds] });
   };
   
   const handleDeleteChat = (peerId: string) => {
       setUndoAction({ type: 'delete', peerId });
       if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
       undoTimeoutRef.current = window.setTimeout(() => {
-          const chatId = firebaseService.getChatId(currentUser.id, peerId);
-          firebaseService.deleteChatHistory(chatId);
+          // FIX: Changed to geminiService for consistency
+          const chatId = geminiService.getChatId(currentUser.id, peerId);
+          // FIX: Changed to geminiService for consistency
+          geminiService.deleteChatHistory(chatId);
           setUndoAction(null);
       }, 5000);
   };

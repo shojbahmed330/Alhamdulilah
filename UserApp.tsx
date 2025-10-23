@@ -242,7 +242,8 @@ const UserApp: React.FC = () => {
   
   const handleOpenConversation = useCallback(async (peer: User) => {
     if (!user) return;
-    await firebaseService.ensureChatDocumentExists(user, peer);
+    // FIX: Changed to geminiService for consistency
+    await geminiService.ensureChatDocumentExists(user, peer);
     
     const isMobile = window.innerWidth < 768;
 
@@ -272,7 +273,8 @@ const UserApp: React.FC = () => {
 
     isFirstConversationLoad.current = true; 
 
-    const unsubscribe = firebaseService.listenToConversations(user.id, (newConvos) => {
+    // FIX: Changed to geminiService for consistency
+    const unsubscribe = geminiService.listenToConversations(user.id, (newConvos) => {
         const convoWithNewMessage = newConvos.find(convo => {
             if (!convo.lastMessage || convo.lastMessage.senderId === user.id) {
                 return false;
@@ -305,7 +307,8 @@ const UserApp: React.FC = () => {
 
         const counts: Record<string, number> = {};
         newConvos.forEach(convo => {
-            const chatId = firebaseService.getChatId(user.id, convo.peer.id);
+            // FIX: Changed to geminiService for consistency
+            const chatId = geminiService.getChatId(user.id, convo.peer.id);
             counts[chatId] = convo.unreadCount || 0;
         });
         setChatUnreadCounts(counts);
@@ -479,7 +482,8 @@ const UserApp: React.FC = () => {
     let unsubscribes: (()=>void)[] = [];
     
     setIsLoadingReels(true);
-    const unsubscribeReelsPosts = firebaseService.listenToReelsPosts(user.id, (newReelsPosts) => {
+    // FIX: Changed to geminiService for consistency
+    const unsubscribeReelsPosts = geminiService.listenToReelsPosts(user.id, (newReelsPosts) => {
         setReelsPosts(newReelsPosts);
         setIsLoadingReels(false);
     });
@@ -491,12 +495,14 @@ const UserApp: React.FC = () => {
     const unsubscribeNotifications = firebaseService.listenToNotifications(user.id, setNotifications);
     unsubscribes.push(unsubscribeNotifications);
     
-    const unsubscribeCalls = firebaseService.listenForIncomingCalls(user.id, (call) => {
+    // FIX: Changed to geminiService for consistency
+    const unsubscribeCalls = geminiService.listenForIncomingCalls(user.id, (call) => {
         setIncomingCall(call);
     });
     unsubscribes.push(unsubscribeCalls);
 
-    const unsubscribeGroups = firebaseService.listenToUserGroups(user.id, setGroups);
+    // FIX: Changed to geminiService for consistency
+    const unsubscribeGroups = geminiService.listenToUserGroups(user.id, setGroups);
     unsubscribes.push(unsubscribeGroups);
 
     return () => {
@@ -525,7 +531,8 @@ const UserApp: React.FC = () => {
     const fetchFriends = async () => {
         if (!user?.id) return;
         try {
-            const friendsData = await firebaseService.getFriends(user.id);
+            // FIX: Changed to geminiService for consistency
+            const friendsData = await geminiService.getFriendsList(user.id);
             if (isMounted) {
                 setFriends(friendsData);
             }
@@ -755,7 +762,8 @@ const UserApp: React.FC = () => {
   };
 
   const handleAdViewed = (campaignId: string) => {
-      firebaseService.trackAdView(campaignId);
+      // FIX: Changed to geminiService for consistency
+      geminiService.trackAdView(campaignId);
   };
 
   const handleAdComplete = async (campaignId?: string) => {
@@ -796,7 +804,8 @@ const UserApp: React.FC = () => {
   const handleAdClick = async (post: Post) => {
     if (!user || !post.isSponsored || !post.campaignId) return;
 
-    await firebaseService.trackAdClick(post.campaignId);
+    // FIX: Changed to geminiService for consistency
+    await geminiService.trackAdClick(post.campaignId);
     
     if (post.allowLeadForm) {
         setTtsMessage(getTtsPrompt('lead_form_opened', language));
@@ -832,7 +841,8 @@ const UserApp: React.FC = () => {
     }
     
     try {
-        await firebaseService.submitLead({
+        // FIX: Changed to geminiService for consistency
+        await geminiService.submitLead({
             campaignId: leadFormPost.campaignId,
             sponsorId: leadFormPost.sponsorId,
             userName: leadData.name,
@@ -908,7 +918,8 @@ const UserApp: React.FC = () => {
 
   const handleReactToImage = async (postId: string, imageId: string, emoji: string) => {
     if (!user) return;
-    await firebaseService.reactToImage(postId, imageId, user.id, emoji);
+    // FIX: Changed to geminiService for consistency
+    await geminiService.reactToImage(postId, imageId, user.id, emoji);
   };
 
   const handleReactToComment = async (postId: string, commentId: string, emoji: string) => {
@@ -1067,7 +1078,8 @@ const UserApp: React.FC = () => {
   };
   
   const handleAcceptCall = async (call: Call) => {
-      await firebaseService.updateCallStatus(call.id, 'active');
+      // FIX: Changed to geminiService for consistency
+      await geminiService.updateCallStatus(call.id, 'active');
       setIncomingCall(null);
       navigate(AppView.CALL_SCREEN, {
           callId: call.id,
@@ -1077,7 +1089,8 @@ const UserApp: React.FC = () => {
   };
 
   const handleRejectCall = async (call: Call) => {
-      await firebaseService.updateCallStatus(call.id, 'declined');
+      // FIX: Changed to geminiService for consistency
+      await geminiService.updateCallStatus(call.id, 'declined');
       setIncomingCall(null);
   };
 

@@ -6,7 +6,6 @@ import { firebaseService } from './firebaseService';
 
 
 // --- Gemini API Initialization ---
-// FIX: Use process.env.API_KEY as per guidelines
 const apiKey = process.env.API_KEY;
 if (!apiKey) {
     alert("CRITICAL ERROR: Gemini API key is not configured. Please ensure your environment variables are set up correctly.");
@@ -287,7 +286,7 @@ const nluCommandSchema = {
 
 export const geminiService = {
   // --- NLU ---
-  async processIntent(command: string, context?: { userNames?: string[], groupNames?: string[], themeNames?: string[], active_author_name?: string }): Promise<NLUResponse> {
+  async processIntent(command, context) {
     
     let dynamicContext = "";
     if (context?.userNames && context.userNames.length > 0) {
@@ -340,7 +339,7 @@ The post currently on screen belongs to '${context.active_author_name}'. Generic
       const jsonString = response.text.trim();
       const parsed = JSON.parse(jsonString);
       console.log("NLU Response:", parsed);
-      return parsed as NLUResponse;
+      return parsed;
     } catch (error) {
       console.error("Error processing intent:", error);
       console.error("Failed command:", command);
@@ -348,7 +347,7 @@ The post currently on screen belongs to '${context.active_author_name}'. Generic
     }
   },
 
-  async correctTranscript(rawText: string): Promise<string> {
+  async correctTranscript(rawText) {
     const systemInstruction = `You are an expert transcriber and translator. Your primary task is to correct a raw voice-to-text transcript into proper Bengali (Bangla) script. The input text might be in 'Banglish' (Bengali words spelled phonetically with English letters), a mix of English and Bengali words, or contain speech recognition errors.
 
 Your rules are:
@@ -377,83 +376,36 @@ Examples:
       });
 
       const correctedText = response.text.trim();
-      // Sometimes Gemini might still wrap it in quotes
       return correctedText.replace(/^"|"$/g, '');
     } catch (error) {
       console.error("Error correcting transcript with Gemini:", error);
-      // Fallback to the original text if AI fails
       return rawText;
     }
   },
 
-  // --- Friends ---
-  getFriendRequests: (userId: string): Promise<User[]> => firebaseService.getFriendRequests(userId),
-  acceptFriendRequest: (currentUserId: string, requestingUserId: string) => firebaseService.acceptFriendRequest(currentUserId, requestingUserId),
-  declineFriendRequest: (currentUserId: string, requestingUserId: string) => firebaseService.declineFriendRequest(currentUserId, requestingUserId),
-  checkFriendshipStatus: (currentUserId: string, profileUserId: string): Promise<FriendshipStatus> => firebaseService.checkFriendshipStatus(currentUserId, profileUserId),
-  addFriend: (currentUserId: string, targetUserId: string): Promise<{ success: boolean; reason?: string }> => firebaseService.addFriend(currentUserId, targetUserId),
-  unfriendUser: (currentUserId: string, targetUserId: string) => firebaseService.unfriendUser(currentUserId, targetUserId),
-  cancelFriendRequest: (currentUserId: string, targetUserId: string) => firebaseService.cancelFriendRequest(currentUserId, targetUserId),
+  getFriendRequests: (userId) => firebaseService.getFriendRequests(userId),
+  acceptFriendRequest: (currentUserId, requestingUserId) => firebaseService.acceptFriendRequest(currentUserId, requestingUserId),
+  declineFriendRequest: (currentUserId, requestingUserId) => firebaseService.declineFriendRequest(currentUserId, requestingUserId),
+  checkFriendshipStatus: (currentUserId, profileUserId) => firebaseService.checkFriendshipStatus(currentUserId, profileUserId),
+  addFriend: (currentUserId, targetUserId) => firebaseService.addFriend(currentUserId, targetUserId),
+  unfriendUser: (currentUserId, targetUserId) => firebaseService.unfriendUser(currentUserId, targetUserId),
+  cancelFriendRequest: (currentUserId, targetUserId) => firebaseService.cancelFriendRequest(currentUserId, targetUserId),
+  getRecommendedFriends: (userId) => firebaseService.getRecommendedFriends(userId),
+  getFriendsList: (userId) => firebaseService.getFriendsList(userId),
+  getCommonFriends: (userId1, userId2) => firebaseService.getCommonFriends(userId1, userId2),
+  getUserById: (userId) => firebaseService.getUserProfileById(userId),
+  getUsersByIds: (userIds) => firebaseService.getUsersByIds(userIds),
+  searchUsers: (query) => firebaseService.searchUsers(query),
+  updateProfile: (userId, updates) => firebaseService.updateProfile(userId, updates),
+  updateProfilePicture: (userId, base64, caption, captionStyle) => firebaseService.updateProfilePicture(userId, base64, caption, captionStyle),
+  updateCoverPhoto: (userId, base64, caption, captionStyle) => firebaseService.updateCoverPhoto(userId, base64, caption, captionStyle),
+  blockUser: (currentUserId, targetUserId) => firebaseService.blockUser(currentUserId, targetUserId),
+  unblockUser: (currentUserId, targetUserId) => firebaseService.unblockUser(currentUserId, targetUserId),
+  changePassword: (userId, currentPass, newPass) => firebaseService.changePassword(userId, currentPass, newPass),
+  deactivateAccount: (userId) => firebaseService.deactivateAccount(userId),
+  updateVoiceCoins: (userId, amount) => firebaseService.updateVoiceCoins(userId, amount),
 
-  async getRecommendedFriends(userId: string): Promise<User[]> {
-      const allUsers = await firebaseService.getAllUsersForAdmin();
-      const currentUser = allUsers.find(u => u.id === userId);
-      if (!currentUser) return [];
-
-      const friendsAndRequests = new Set([
-          ...currentUser.friendIds || [],
-          userId
-      ]);
-
-      return allUsers.filter(u => !friendsAndRequests.has(u.id));
-  },
-  
-   async getFriendsList(userId: string): Promise<User[]> {
-      const user = await firebaseService.getUserProfileById(userId);
-      if (!user || !user.friendIds || user.friendIds.length === 0) {
-          return [];
-      }
-      return await firebaseService.getUsersByIds(user.friendIds);
-  },
-  
-  getCommonFriends: (userId1: string, userId2: string): Promise<User[]> => firebaseService.getCommonFriends(userId1, userId2),
-  
-  // --- Profile & Security ---
-  getUserById: (userId: string): Promise<User | null> => firebaseService.getUserProfileById(userId),
-  getUsersByIds: (userIds: string[]): Promise<User[]> => firebaseService.getUsersByIds(userIds),
-  searchUsers: (query: string): Promise<User[]> => firebaseService.searchUsers(query),
-  
-  async updateProfile(userId: string, updates: Partial<User>): Promise<void> {
-    await firebaseService.updateProfile(userId, updates);
-  },
-  
-  async updateProfilePicture(userId: string, base64: string, caption?: string, captionStyle?: Post['captionStyle']): Promise<{ updatedUser: User; newPost: Post } | null> {
-    return firebaseService.updateProfilePicture(userId, base64, caption, captionStyle);
-  },
-  
-  async updateCoverPhoto(userId: string, base64: string, caption?: string, captionStyle?: Post['captionStyle']): Promise<{ updatedUser: User; newPost: Post } | null> {
-    return firebaseService.updateCoverPhoto(userId, base64, caption, captionStyle);
-  },
-
-  blockUser: (currentUserId: string, targetUserId: string): Promise<boolean> => firebaseService.blockUser(currentUserId, targetUserId),
-  unblockUser: (currentUserId: string, targetUserId: string): Promise<boolean> => firebaseService.unblockUser(currentUserId, targetUserId),
-
-  async changePassword(userId: string, currentPass: string, newPass: string): Promise<boolean> {
-      const user = await firebaseService.getUserProfileById(userId);
-      if (user && user.password === currentPass) {
-          await firebaseService.updateProfile(userId, { password: newPass });
-          return true;
-      }
-      return false;
-  },
-
-  deactivateAccount: (userId: string): Promise<boolean> => firebaseService.deactivateAccount(userId),
-  
-  // --- Voice Coins ---
-  updateVoiceCoins: (userId: string, amount: number): Promise<boolean> => firebaseService.updateVoiceCoins(userId, amount),
-
-  // --- Image Generation ---
-  async generateImageForPost(prompt: string): Promise<string | null> {
+  async generateImageForPost(prompt) {
       try {
           const hash = prompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
           const imageUrl = `https://picsum.photos/seed/${hash}/1024`;
@@ -461,7 +413,7 @@ Examples:
           const blob = await response.blob();
           return new Promise((resolve, reject) => {
               const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
+              reader.onloadend = () => resolve(reader.result);
               reader.onerror = reject;
               reader.readAsDataURL(blob);
           });
@@ -471,7 +423,7 @@ Examples:
       }
   },
 
-  async editImage(base64ImageData: string, mimeType: string, prompt: string): Promise<string | null> {
+  async editImage(base64ImageData, mimeType, prompt) {
     try {
         const imagePart = { inlineData: { data: base64ImageData, mimeType: mimeType } };
         const textPart = { text: prompt };
@@ -493,7 +445,7 @@ Examples:
     }
   },
   
-  async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed> {
+  async getCategorizedExploreFeed(userId) {
     const posts = await firebaseService.getExplorePosts(userId);
     if (posts.length === 0) {
         return { trending: [], forYou: [], recent: [], funnyVoiceNotes: [], newTalent: [] };
@@ -543,11 +495,11 @@ Examples:
         const categorizedIds = JSON.parse(jsonString);
         const postsById = new Map(posts.map(p => [p.id, p]));
         return {
-            trending: (categorizedIds.trending || []).map((id: string) => postsById.get(id)).filter(Boolean),
-            forYou: (categorizedIds.forYou || []).map((id: string) => postsById.get(id)).filter(Boolean),
-            recent: (categorizedIds.recent || []).map((id: string) => postsById.get(id)).filter(Boolean),
-            funnyVoiceNotes: (categorizedIds.funnyVoiceNotes || []).map((id: string) => postsById.get(id)).filter(Boolean),
-            newTalent: (categorizedIds.newTalent || []).map((id: string) => postsById.get(id)).filter(Boolean),
+            trending: (categorizedIds.trending || []).map((id) => postsById.get(id)).filter(Boolean),
+            forYou: (categorizedIds.forYou || []).map((id) => postsById.get(id)).filter(Boolean),
+            recent: (categorizedIds.recent || []).map((id) => postsById.get(id)).filter(Boolean),
+            funnyVoiceNotes: (categorizedIds.funnyVoiceNotes || []).map((id) => postsById.get(id)).filter(Boolean),
+            newTalent: (categorizedIds.newTalent || []).map((id) => postsById.get(id)).filter(Boolean),
         };
     } catch (error) {
         console.error("Error categorizing explore feed with Gemini:", error);
@@ -561,18 +513,12 @@ Examples:
         };
     }
   },
-
-  // Music Library (Mock)
-  getMusicLibrary: (): MusicTrack[] => MOCK_MUSIC_LIBRARY,
-
-  // --- Posts ---
+  getMusicLibrary: () => MOCK_MUSIC_LIBRARY,
   listenToFeedPosts: (currentUserId, friendIds, blockedUserIds, callback) => firebaseService.listenToFeedPosts(currentUserId, friendIds, blockedUserIds, callback),
   listenToReelsPosts: (userId, callback) => firebaseService.listenToReelsPosts(userId, callback),
   getPostsByIds: (postIds) => firebaseService.getPostsByIds(postIds),
   savePost: (userId, postId) => firebaseService.savePost(userId, postId),
   unsavePost: (userId, postId) => firebaseService.unsavePost(userId, postId),
-
-  // --- Chats ---
   ensureChatDocumentExists: (user1, user2) => firebaseService.ensureChatDocumentExists(user1, user2),
   getChatId: (user1Id, user2Id) => firebaseService.getChatId(user1Id, user2Id),
   listenToMessages: (chatId, callback) => firebaseService.listenToMessages(chatId, callback),
@@ -587,7 +533,7 @@ Examples:
   listenToChatSettings: (chatId, callback) => firebaseService.listenToChatSettings(chatId, callback),
   updateTypingStatus: (chatId, userId, isTyping) => firebaseService.updateTypingStatus(chatId, userId, isTyping),
 
-  createReplySnippet(message: Message): ReplyInfo {
+  createReplySnippet(message) {
         let content = '';
         if (message.isDeleted) {
             content = "Unsent message";
@@ -602,8 +548,6 @@ Examples:
         }
         return { messageId: message.id, senderName: message.senderId, content };
     },
-
-    // --- Rooms & Calls ---
     listenToLiveAudioRooms: (callback) => firebaseService.listenToLiveAudioRooms(callback),
     listenToLiveVideoRooms: (callback) => firebaseService.listenToLiveVideoRooms(callback),
     listenToAudioRoom: (roomId, callback) => firebaseService.listenToRoom(roomId, 'audio', callback),
@@ -632,8 +576,6 @@ Examples:
     listenForIncomingCalls: (userId, callback) => firebaseService.listenForIncomingCalls(userId, callback),
     updateCallStatus: (callId, status) => firebaseService.updateCallStatus(callId, status),
     getAgoraToken: (channelName, uid) => firebaseService.getAgoraToken(channelName, uid),
-
-    // --- Ads & Campaigns ---
     getCampaignsForSponsor: (sponsorId) => firebaseService.getCampaignsForSponsor(sponsorId),
     submitCampaignForApproval: (campaignData, transactionId) => firebaseService.submitCampaignForApproval(campaignData, transactionId),
     getRandomActiveCampaign: () => firebaseService.getRandomActiveCampaign(),
@@ -643,14 +585,10 @@ Examples:
     getLeadsForCampaign: (campaignId) => firebaseService.getLeadsForCampaign(campaignId),
     getInjectableAd: (currentUser) => firebaseService.getInjectableAd(currentUser),
     getInjectableStoryAd: (currentUser) => firebaseService.getInjectableStoryAd(currentUser),
-
-    // --- Stories ---
     getStories: (currentUserId) => firebaseService.getStories(currentUserId),
     markStoryAsViewed: (storyId, userId) => firebaseService.markStoryAsViewed(storyId, userId),
     createStory: (storyData, mediaFile) => firebaseService.createStory(storyData, mediaFile),
     createStoryFromPost: (user, post) => firebaseService.createStoryFromPost(user, post),
-    
-    // --- Groups ---
     listenToUserGroups: (userId, callback) => firebaseService.listenToUserGroups(userId, callback),
     listenToGroup: (groupId, callback) => firebaseService.listenToGroup(groupId, callback),
     getGroupById: (groupId) => firebaseService.getGroupById(groupId),
@@ -666,8 +604,6 @@ Examples:
     voteOnPoll: (userId, postId, optionIndex) => firebaseService.voteOnPoll(userId, postId, optionIndex),
     markBestAnswer: (userId, postId, commentId) => firebaseService.markBestAnswer(userId, postId, commentId),
     inviteFriendToGroup: (groupId, friendId) => firebaseService.inviteFriendToGroup(groupId, friendId),
-    
-    // --- Group Chat & Events ---
     listenToGroupChat: (groupId, callback) => firebaseService.listenToGroupChat(groupId, callback),
     getGroupChat: (groupId) => firebaseService.getGroupChat(groupId),
     sendGroupChatMessage: (groupId, sender, text) => firebaseService.sendGroupChatMessage(groupId, sender, text),
@@ -675,8 +611,6 @@ Examples:
     getGroupEvents: (groupId) => firebaseService.getGroupEvents(groupId),
     createGroupEvent: (creator, groupId, title, description, date) => firebaseService.createGroupEvent(creator, groupId, title, description, date),
     rsvpToEvent: (userId, eventId) => firebaseService.rsvpToEvent(userId, eventId),
-    
-    // --- Admin Panel ---
     adminLogin: (email, password) => firebaseService.adminLogin(email, password),
     getAdminDashboardStats: () => firebaseService.getAdminDashboardStats(),
     getAllUsersForAdmin: () => firebaseService.getAllUsersForAdmin(),

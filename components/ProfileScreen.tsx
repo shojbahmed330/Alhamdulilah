@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User, Post, FriendshipStatus, ScrollState, AppView, Comment } from '../types';
 import { PostCard } from './PostCard';
@@ -154,7 +155,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setIsLoading(true); // Start loading when username changes
     isInitialLoadRef.current = true; // Reset initial load flag
 
-    const unsubscribe = firebaseService.listenToUserProfile(username, (user) => {
+    // FIX: Changed to geminiService for consistency
+    const unsubscribe = geminiService.listenToUserProfile(username, (user) => {
       setProfileUser(user);
       if (!user) {
         onSetTtsMessage(`Profile for ${username} not found.`);
@@ -170,7 +172,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     if (!profileUser) return;
 
     // Switched to a listener to make the posts list reactive to changes (like deletion)
-    const unsubscribePosts = firebaseService.listenToPostsByUser(profileUser.id, (userPosts) => {
+    // FIX: Changed to geminiService for consistency
+    const unsubscribePosts = geminiService.listenToPostsByUser(profileUser.id, (userPosts) => {
         setPosts(userPosts);
     });
 
