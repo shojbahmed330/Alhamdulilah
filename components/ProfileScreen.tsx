@@ -25,6 +25,7 @@ interface ProfileScreenProps {
   onCurrentUserUpdate: (updatedUser: User) => void;
   onPostCreated: (newPost: Post) => void;
   onSharePost: (post: Post) => void;
+  onShareAsStory: (post: Post) => void;
   onOpenPhotoViewer: (post: Post, initialUrl?: string) => void;
   onDeletePost: (postId: string) => void;
   onReportPost: (post: Post) => void;
@@ -69,7 +70,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     onEditProfile, onOpenComments, onOpenProfile, onReactToPost, onBlockUser, scrollState,
     onCommandProcessed, onSetScrollState, onNavigate, onGoBack,
     onCurrentUserUpdate, onPostCreated,
-    onSharePost, onOpenPhotoViewer, onDeletePost, onReportPost, onHidePost, onSavePost, onCopyLink,
+    onSharePost, onShareAsStory, onOpenPhotoViewer, onDeletePost, onReportPost, onHidePost, onSavePost, onCopyLink,
     initialTab
 }) => {
   const [profileUser, setProfileUser] = useState<User | null>(null);
@@ -679,6 +680,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                                         onOpenComments={onOpenComments}
                                         onAuthorClick={onOpenProfile}
                                         onSharePost={onSharePost}
+                                        onShareAsStory={onShareAsStory}
                                         onOpenPhotoViewer={onOpenPhotoViewer}
                                         onDeletePost={onDeletePost}
                                         onReportPost={onReportPost}
@@ -750,6 +752,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                                             onOpenComments={onOpenComments}
                                             onAuthorClick={onOpenProfile}
                                             onSharePost={onSharePost}
+                                            onShareAsStory={onShareAsStory}
                                             onOpenPhotoViewer={onOpenPhotoViewer}
                                             onDeletePost={onDeletePost}
                                             onReportPost={onReportPost}

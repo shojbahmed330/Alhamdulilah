@@ -6,6 +6,7 @@ import { firebaseService } from './firebaseService';
 
 
 // --- Gemini API Initialization ---
+// FIX: Use process.env.API_KEY as per guidelines
 const apiKey = process.env.API_KEY;
 if (!apiKey) {
     alert("CRITICAL ERROR: Gemini API key is not configured. Please ensure your environment variables are set up correctly.");
@@ -240,32 +241,6 @@ let NLU_INTENT_LIST = `
 - intent_stop_dictation
 `;
 
-// Define a schema for the Post object to be returned by Gemini
-const postSchemaProperties = {
-    type: Type.OBJECT,
-    properties: {
-        id: { type: Type.STRING },
-        author: {
-            type: Type.OBJECT,
-            properties: {
-                id: { type: Type.STRING },
-                name: { type: Type.STRING },
-                username: { type: Type.STRING },
-                avatarUrl: { type: Type.STRING },
-            }
-        },
-        caption: { type: Type.STRING },
-        createdAt: { type: Type.STRING },
-        reactionCount: { type: Type.NUMBER },
-        commentCount: { type: Type.NUMBER },
-        imageUrl: { type: Type.STRING },
-        videoUrl: { type: Type.STRING },
-        audioUrl: { type: Type.STRING },
-        postType: { type: Type.STRING },
-        isSponsored: { type: Type.BOOLEAN },
-    }
-};
-
 const nluCommandSchema = {
     type: Type.OBJECT,
     properties: {
@@ -420,7 +395,6 @@ Examples:
   unfriendUser: (currentUserId: string, targetUserId: string) => firebaseService.unfriendUser(currentUserId, targetUserId),
   cancelFriendRequest: (currentUserId: string, targetUserId: string) => firebaseService.cancelFriendRequest(currentUserId, targetUserId),
 
-  // --- This is a mock/simulated function ---
   async getRecommendedFriends(userId: string): Promise<User[]> {
       const allUsers = await firebaseService.getAllUsersForAdmin();
       const currentUser = allUsers.find(u => u.id === userId);
@@ -445,17 +419,9 @@ Examples:
   getCommonFriends: (userId1: string, userId2: string): Promise<User[]> => firebaseService.getCommonFriends(userId1, userId2),
   
   // --- Profile & Security ---
-  async getUserById(userId: string): Promise<User | null> {
-    return firebaseService.getUserProfileById(userId);
-  },
-  
-  async searchUsers(query: string): Promise<User[]> {
-    return firebaseService.searchUsers(query);
-  },
-
-  // FIX: Add missing wrapper for firebaseService.getUsersByIds.
-  // This function is required by SettingsScreen to fetch details of blocked users.
+  getUserById: (userId: string): Promise<User | null> => firebaseService.getUserProfileById(userId),
   getUsersByIds: (userIds: string[]): Promise<User[]> => firebaseService.getUsersByIds(userIds),
+  searchUsers: (query: string): Promise<User[]> => firebaseService.searchUsers(query),
   
   async updateProfile(userId: string, updates: Partial<User>): Promise<void> {
     await firebaseService.updateProfile(userId, updates);
@@ -469,16 +435,10 @@ Examples:
     return firebaseService.updateCoverPhoto(userId, base64, caption, captionStyle);
   },
 
-  async blockUser(currentUserId: string, targetUserId: string): Promise<boolean> {
-      return firebaseService.blockUser(currentUserId, targetUserId);
-  },
-  
-  async unblockUser(currentUserId: string, targetUserId: string): Promise<boolean> {
-      return firebaseService.unblockUser(currentUserId, targetUserId);
-  },
+  blockUser: (currentUserId: string, targetUserId: string): Promise<boolean> => firebaseService.blockUser(currentUserId, targetUserId),
+  unblockUser: (currentUserId: string, targetUserId: string): Promise<boolean> => firebaseService.unblockUser(currentUserId, targetUserId),
 
   async changePassword(userId: string, currentPass: string, newPass: string): Promise<boolean> {
-      // This is a mock for demonstration. Real password changes need secure backend logic.
       const user = await firebaseService.getUserProfileById(userId);
       if (user && user.password === currentPass) {
           await firebaseService.updateProfile(userId, { password: newPass });
@@ -487,25 +447,16 @@ Examples:
       return false;
   },
 
-  async deactivateAccount(userId: string): Promise<boolean> {
-      return firebaseService.deactivateAccount(userId);
-  },
+  deactivateAccount: (userId: string): Promise<boolean> => firebaseService.deactivateAccount(userId),
   
   // --- Voice Coins ---
-  async updateVoiceCoins(userId: string, amount: number): Promise<boolean> {
-    return firebaseService.updateVoiceCoins(userId, amount);
-  },
+  updateVoiceCoins: (userId: string, amount: number): Promise<boolean> => firebaseService.updateVoiceCoins(userId, amount),
 
   // --- Image Generation ---
   async generateImageForPost(prompt: string): Promise<string | null> {
-      // This is a mock function as image generation is a premium feature.
-      // In a real app, this would call the Gemini Image API.
-      // We will return a placeholder image from an external service.
       try {
-          // A simple hash to get a different image for different prompts
           const hash = prompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
           const imageUrl = `https://picsum.photos/seed/${hash}/1024`;
-          // We need to fetch and convert to base64 to simulate the behavior of the real API returning image bytes.
           const response = await fetch(imageUrl);
           const blob = await response.blob();
           return new Promise((resolve, reject) => {
@@ -522,48 +473,31 @@ Examples:
 
   async editImage(base64ImageData: string, mimeType: string, prompt: string): Promise<string | null> {
     try {
-        const imagePart = {
-            inlineData: {
-                data: base64ImageData,
-                mimeType: mimeType,
-            },
-        };
-        const textPart = {
-            text: prompt,
-        };
-
+        const imagePart = { inlineData: { data: base64ImageData, mimeType: mimeType } };
+        const textPart = { text: prompt };
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts: [imagePart, textPart] },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-            },
+            config: { responseModalities: [Modality.IMAGE, Modality.TEXT] },
         });
 
         for (const part of response.candidates[0].content.parts) {
             if (part.inlineData && part.inlineData.data) {
-                // Return a data URL for easy display
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
         }
-        return null; // No image found in response
+        return null;
     } catch (error) {
         console.error("Error editing image with Gemini:", error);
         return null;
     }
   },
   
-// FIX: Added missing 'getCategorizedExploreFeed' function.
-async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed> {
-    // This is a new function to fulfill what ExploreScreen expects.
-    // It fetches public posts and uses Gemini to sort them into categories.
+  async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed> {
     const posts = await firebaseService.getExplorePosts(userId);
-
     if (posts.length === 0) {
         return { trending: [], forYou: [], recent: [], funnyVoiceNotes: [], newTalent: [] };
     }
-
-    // To save tokens and for efficiency, we send a simplified version of posts to the AI.
     const simplifiedPosts = posts.map(p => ({
         id: p.id,
         caption: p.caption,
@@ -572,7 +506,6 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
         commentCount: p.commentCount || 0,
         createdAt: p.createdAt,
     }));
-
     const systemInstruction = `You are a social media content curator for VoiceBook. Your task is to categorize a list of posts into predefined categories based on the provided JSON data. The user ID of the person browsing is ${userId}.
     
     Categories are:
@@ -584,7 +517,6 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
 
     You will receive a JSON array of simplified post objects. You MUST return a single, valid JSON object with keys corresponding to the categories. Each key's value should be an array of post IDs (strings) belonging to that category. A post can appear in multiple categories. Ensure you return some posts in each category if possible, but don't force it if none fit. Prioritize 'trending' and 'forYou' to be well-populated. Limit each category to a maximum of 10 post IDs.
     `;
-    
     const responseSchema = {
         type: Type.OBJECT,
         properties: {
@@ -607,70 +539,41 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
                 responseSchema: responseSchema,
             },
         });
-
         const jsonString = response.text.trim();
         const categorizedIds = JSON.parse(jsonString);
-
         const postsById = new Map(posts.map(p => [p.id, p]));
-        
-        const result: CategorizedExploreFeed = {
+        return {
             trending: (categorizedIds.trending || []).map((id: string) => postsById.get(id)).filter(Boolean),
             forYou: (categorizedIds.forYou || []).map((id: string) => postsById.get(id)).filter(Boolean),
             recent: (categorizedIds.recent || []).map((id: string) => postsById.get(id)).filter(Boolean),
             funnyVoiceNotes: (categorizedIds.funnyVoiceNotes || []).map((id: string) => postsById.get(id)).filter(Boolean),
             newTalent: (categorizedIds.newTalent || []).map((id: string) => postsById.get(id)).filter(Boolean),
         };
-        return result;
-
     } catch (error) {
         console.error("Error categorizing explore feed with Gemini:", error);
-        // Fallback to simple local categorization if AI fails
         const sortedByReactions = posts.slice().sort((a, b) => Object.keys(b.reactions || {}).length - Object.keys(a.reactions || {}).length);
         return {
             trending: sortedByReactions.slice(0, 10),
             forYou: posts.slice(0, 10).sort(() => 0.5 - Math.random()), // Shuffle
-            recent: posts.slice(0, 10), // Assumes posts are already sorted by date desc
+            recent: posts.slice(0, 10),
             funnyVoiceNotes: posts.filter(p => p.audioUrl && p.caption?.toLowerCase().match(/funny|lol|haha|😂/)).slice(0, 10),
-            newTalent: sortedByReactions.slice(10, 20), // Grab some that aren't top trending
+            newTalent: sortedByReactions.slice(10, 20),
         };
     }
   },
 
   // Music Library (Mock)
-  getMusicLibrary(): MusicTrack[] {
-      return MOCK_MUSIC_LIBRARY;
-  },
+  getMusicLibrary: (): MusicTrack[] => MOCK_MUSIC_LIBRARY,
 
-  // --- Mocks & Simulations ---
-  
-  async sendAudioPost(userId: string, duration: number, caption: string): Promise<Post> {
-    const user = await firebaseService.getUserProfileById(userId);
-    if (!user) throw new Error("User not found for creating post");
-    
-    const newPost: Post = {
-        id: `mock_${Date.now()}`,
-        author: { id: user.id, name: user.name, username: user.username, avatarUrl: user.avatarUrl },
-        audioUrl: '#', // Mock URL
-        caption: caption,
-        duration: duration,
-        createdAt: new Date().toISOString(),
-        commentCount: 0,
-        comments: [],
-        reactions: {},
-    };
-
-    await firebaseService.createPost(newPost, {});
-    return newPost;
-  },
-  
   // --- Posts ---
-  listenToFeedPosts: (currentUserId: string, friendIds: string[], blockedUserIds: string[], callback: (posts: Post[]) => void) => {
-      return firebaseService.listenToFeedPosts(currentUserId, friendIds, blockedUserIds, callback);
-  },
-  getPostsByIds: (postIds: string[]): Promise<Post[]> => firebaseService.getPostsByIds(postIds),
-  savePost: (userId: string, postId: string): Promise<boolean> => firebaseService.savePost(userId, postId),
-  unsavePost: (userId: string, postId: string): Promise<boolean> => firebaseService.unsavePost(userId, postId),
+  listenToFeedPosts: (currentUserId, friendIds, blockedUserIds, callback) => firebaseService.listenToFeedPosts(currentUserId, friendIds, blockedUserIds, callback),
+  listenToReelsPosts: (userId, callback) => firebaseService.listenToReelsPosts(userId, callback),
+  getPostsByIds: (postIds) => firebaseService.getPostsByIds(postIds),
+  savePost: (userId, postId) => firebaseService.savePost(userId, postId),
+  unsavePost: (userId, postId) => firebaseService.unsavePost(userId, postId),
 
+  // --- Chats ---
+  ensureChatDocumentExists: (user1, user2) => firebaseService.ensureChatDocumentExists(user1, user2),
   getChatId: (user1Id, user2Id) => firebaseService.getChatId(user1Id, user2Id),
   listenToMessages: (chatId, callback) => firebaseService.listenToMessages(chatId, callback),
   listenToConversations: (userId, callback) => firebaseService.listenToConversations(userId, callback),
@@ -681,8 +584,10 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
   getChatSettings: (chatId) => firebaseService.getChatSettings(chatId),
   updateChatSettings: (chatId, settings) => firebaseService.updateChatSettings(chatId, settings),
   markMessagesAsRead: (chatId, userId) => firebaseService.markMessagesAsRead(chatId, userId),
+  listenToChatSettings: (chatId, callback) => firebaseService.listenToChatSettings(chatId, callback),
+  updateTypingStatus: (chatId, userId, isTyping) => firebaseService.updateTypingStatus(chatId, userId, isTyping),
 
-    createReplySnippet(message: Message): ReplyInfo {
+  createReplySnippet(message: Message): ReplyInfo {
         let content = '';
         if (message.isDeleted) {
             content = "Unsent message";
@@ -692,66 +597,69 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
                 case 'image': content = 'Image'; break;
                 case 'video': content = 'Video'; break;
                 case 'audio': content = `Voice Message · ${message.duration}s`; break;
+                default: content = '';
             }
         }
-        return {
-            messageId: message.id,
-            senderName: message.senderId,
-            content: content
-        };
+        return { messageId: message.id, senderName: message.senderId, content };
     },
 
-    // --- Rooms ---
-    listenToLiveAudioRooms: (callback: (rooms: LiveAudioRoom[]) => void) => firebaseService.listenToLiveAudioRooms(callback),
-    listenToLiveVideoRooms: (callback: (rooms: LiveVideoRoom[]) => void) => firebaseService.listenToLiveVideoRooms(callback),
-    listenToAudioRoom: (roomId: string, callback: (room: LiveAudioRoom | null) => void) => firebaseService.listenToRoom(roomId, 'audio', callback),
-    listenToVideoRoom: (roomId: string, callback: (room: LiveVideoRoom | null) => void) => firebaseService.listenToRoom(roomId, 'video', callback),
-    createLiveAudioRoom: (host: User, topic: string) => firebaseService.createLiveAudioRoom(host, topic),
-    createLiveVideoRoom: (host: User, topic: string) => firebaseService.createLiveVideoRoom(host, topic),
-    joinLiveAudioRoom: (userId: string, roomId: string) => firebaseService.joinLiveAudioRoom(userId, roomId),
-    joinLiveVideoRoom: (userId: string, roomId: string) => firebaseService.joinLiveVideoRoom(userId, roomId),
-    leaveLiveAudioRoom: (userId: string, roomId: string) => firebaseService.leaveLiveAudioRoom(userId, roomId),
-    leaveLiveVideoRoom: (userId: string, roomId: string) => firebaseService.leaveLiveVideoRoom(userId, roomId),
-    endLiveAudioRoom: (userId: string, roomId: string) => firebaseService.endLiveAudioRoom(userId, roomId),
-    endLiveVideoRoom: (userId: string, roomId: string) => firebaseService.endLiveVideoRoom(userId, roomId),
-    getAudioRoomDetails: (roomId: string) => firebaseService.getAudioRoomDetails(roomId),
-    getRoomDetails: (roomId: string, type: 'audio' | 'video') => firebaseService.getRoomDetails(roomId, type),
-    raiseHandInAudioRoom: (userId: string, roomId: string) => firebaseService.raiseHandInAudioRoom(userId, roomId),
-    inviteToSpeakInAudioRoom: (hostId: string, userId: string, roomId: string) => firebaseService.inviteToSpeakInAudioRoom(hostId, userId, roomId),
-    moveToAudienceInAudioRoom: (hostId: string, userId: string, roomId: string) => firebaseService.moveToAudienceInAudioRoom(hostId, userId, roomId),
-    listenToLiveAudioRoomMessages: (roomId: string, callback: (messages: LiveAudioRoomMessage[]) => void) => firebaseService.listenToLiveAudioRoomMessages(roomId, callback),
-    sendLiveAudioRoomMessage: (roomId: string, sender: User, text: string, isHost: boolean, isSpeaker: boolean) => firebaseService.sendLiveAudioRoomMessage(roomId, sender, text, isHost, isSpeaker),
-    reactToLiveAudioRoomMessage: (roomId: string, messageId: string, userId: string, emoji: string) => firebaseService.reactToLiveAudioRoomMessage(roomId, messageId, userId, emoji),
-    listenToLiveVideoRoomMessages: (roomId: string, callback: (messages: LiveVideoRoomMessage[]) => void) => firebaseService.listenToLiveVideoRoomMessages(roomId, callback),
-    sendLiveVideoRoomMessage: (roomId: string, sender: User, text: string) => firebaseService.sendLiveVideoRoomMessage(roomId, sender, text),
-    updateParticipantStateInVideoRoom: (roomId: string, userId: string, updates: Partial<VideoParticipantState>) => firebaseService.updateParticipantStateInVideoRoom(roomId, userId, updates),
-    
+    // --- Rooms & Calls ---
+    listenToLiveAudioRooms: (callback) => firebaseService.listenToLiveAudioRooms(callback),
+    listenToLiveVideoRooms: (callback) => firebaseService.listenToLiveVideoRooms(callback),
+    listenToAudioRoom: (roomId, callback) => firebaseService.listenToRoom(roomId, 'audio', callback),
+    listenToVideoRoom: (roomId, callback) => firebaseService.listenToRoom(roomId, 'video', callback),
+    createLiveAudioRoom: (host, topic) => firebaseService.createLiveAudioRoom(host, topic),
+    createLiveVideoRoom: (host, topic) => firebaseService.createLiveVideoRoom(host, topic),
+    joinLiveAudioRoom: (userId, roomId) => firebaseService.joinLiveAudioRoom(userId, roomId),
+    joinLiveVideoRoom: (userId, roomId) => firebaseService.joinLiveVideoRoom(userId, roomId),
+    leaveLiveAudioRoom: (userId, roomId) => firebaseService.leaveLiveAudioRoom(userId, roomId),
+    leaveLiveVideoRoom: (userId, roomId) => firebaseService.leaveLiveVideoRoom(userId, roomId),
+    endLiveAudioRoom: (userId, roomId) => firebaseService.endLiveAudioRoom(userId, roomId),
+    endLiveVideoRoom: (userId, roomId) => firebaseService.endLiveVideoRoom(userId, roomId),
+    getAudioRoomDetails: (roomId) => firebaseService.getAudioRoomDetails(roomId),
+    getRoomDetails: (roomId, type) => firebaseService.getRoomDetails(roomId, type),
+    raiseHandInAudioRoom: (userId, roomId) => firebaseService.raiseHandInAudioRoom(userId, roomId),
+    inviteToSpeakInAudioRoom: (hostId, userId, roomId) => firebaseService.inviteToSpeakInAudioRoom(hostId, userId, roomId),
+    moveToAudienceInAudioRoom: (hostId, userId, roomId) => firebaseService.moveToAudienceInAudioRoom(hostId, userId, roomId),
+    listenToLiveAudioRoomMessages: (roomId, callback) => firebaseService.listenToLiveAudioRoomMessages(roomId, callback),
+    sendLiveAudioRoomMessage: (roomId, sender, text, isHost, isSpeaker) => firebaseService.sendLiveAudioRoomMessage(roomId, sender, text, isHost, isSpeaker),
+    reactToLiveAudioRoomMessage: (roomId, messageId, userId, emoji) => firebaseService.reactToLiveAudioRoomMessage(roomId, messageId, userId, emoji),
+    listenToLiveVideoRoomMessages: (roomId, callback) => firebaseService.listenToLiveVideoRoomMessages(roomId, callback),
+    sendLiveVideoRoomMessage: (roomId, sender, text) => firebaseService.sendLiveVideoRoomMessage(roomId, sender, text),
+    updateParticipantStateInVideoRoom: (roomId, userId, updates) => firebaseService.updateParticipantStateInVideoRoom(roomId, userId, updates),
+    createCall: (caller, callee, chatId, type) => firebaseService.createCall(caller, callee, chatId, type),
+    listenToCall: (callId, callback) => firebaseService.listenToCall(callId, callback),
+    listenForIncomingCalls: (userId, callback) => firebaseService.listenForIncomingCalls(userId, callback),
+    updateCallStatus: (callId, status) => firebaseService.updateCallStatus(callId, status),
+    getAgoraToken: (channelName, uid) => firebaseService.getAgoraToken(channelName, uid),
+
     // --- Ads & Campaigns ---
-    getCampaignsForSponsor: (sponsorId: string) => firebaseService.getCampaignsForSponsor(sponsorId),
-    submitCampaignForApproval: (campaignData: Omit<Campaign, 'id'|'views'|'clicks'|'status'|'transactionId'>, transactionId: string) => firebaseService.submitCampaignForApproval(campaignData, transactionId),
+    getCampaignsForSponsor: (sponsorId) => firebaseService.getCampaignsForSponsor(sponsorId),
+    submitCampaignForApproval: (campaignData, transactionId) => firebaseService.submitCampaignForApproval(campaignData, transactionId),
     getRandomActiveCampaign: () => firebaseService.getRandomActiveCampaign(),
-    trackAdView: (campaignId: string) => firebaseService.trackAdView(campaignId),
-    trackAdClick: (campaignId: string) => firebaseService.trackAdClick(campaignId),
-    submitLead: (leadData: Omit<Lead, 'id'>) => firebaseService.submitLead(leadData),
-    getLeadsForCampaign: (campaignId: string) => firebaseService.getLeadsForCampaign(campaignId),
-    getInjectableAd: (currentUser: User) => firebaseService.getInjectableAd(currentUser),
-    getInjectableStoryAd: (currentUser: User) => firebaseService.getInjectableStoryAd(currentUser),
+    trackAdView: (campaignId) => firebaseService.trackAdView(campaignId),
+    trackAdClick: (campaignId) => firebaseService.trackAdClick(campaignId),
+    submitLead: (leadData) => firebaseService.submitLead(leadData),
+    getLeadsForCampaign: (campaignId) => firebaseService.getLeadsForCampaign(campaignId),
+    getInjectableAd: (currentUser) => firebaseService.getInjectableAd(currentUser),
+    getInjectableStoryAd: (currentUser) => firebaseService.getInjectableStoryAd(currentUser),
 
     // --- Stories ---
-    getStories: (currentUserId: string) => firebaseService.getStories(currentUserId),
-    markStoryAsViewed: (storyId: string, userId: string) => firebaseService.markStoryAsViewed(storyId, userId),
+    getStories: (currentUserId) => firebaseService.getStories(currentUserId),
+    markStoryAsViewed: (storyId, userId) => firebaseService.markStoryAsViewed(storyId, userId),
     createStory: (storyData, mediaFile) => firebaseService.createStory(storyData, mediaFile),
+    createStoryFromPost: (user, post) => firebaseService.createStoryFromPost(user, post),
     
     // --- Groups ---
-    listenToUserGroups: (userId: string, callback: (groups: Group[]) => void) => firebaseService.listenToUserGroups(userId, callback),
-    listenToGroup: (groupId: string, callback: (group: Group | null) => void) => firebaseService.listenToGroup(groupId, callback),
-    getGroupById: (groupId: string) => firebaseService.getGroupById(groupId),
-    getSuggestedGroups: (userId: string) => firebaseService.getSuggestedGroups(userId),
+    listenToUserGroups: (userId, callback) => firebaseService.listenToUserGroups(userId, callback),
+    listenToGroup: (groupId, callback) => firebaseService.listenToGroup(groupId, callback),
+    getGroupById: (groupId) => firebaseService.getGroupById(groupId),
+    getSuggestedGroups: (userId) => firebaseService.getSuggestedGroups(userId),
     createGroup: (creator, name, description, coverPhotoUrl, privacy, requiresApproval, category) => firebaseService.createGroup(creator, name, description, coverPhotoUrl, privacy, requiresApproval, category),
     joinGroup: (userId, groupId, answers) => firebaseService.joinGroup(userId, groupId, answers),
     leaveGroup: (userId, groupId) => firebaseService.leaveGroup(userId, groupId),
     getPostsForGroup: (groupId) => firebaseService.getPostsForGroup(groupId),
-    listenToPostsForGroup: (groupId: string, callback: (posts: Post[]) => void) => firebaseService.listenToPostsForGroup(groupId, callback),
+    listenToPostsForGroup: (groupId, callback) => firebaseService.listenToPostsForGroup(groupId, callback),
     updateGroupSettings: (groupId, settings) => firebaseService.updateGroupSettings(groupId, settings),
     pinPost: (groupId, postId) => firebaseService.pinPost(groupId, postId),
     unpinPost: (groupId) => firebaseService.unpinPost(groupId),
@@ -760,17 +668,16 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
     inviteFriendToGroup: (groupId, friendId) => firebaseService.inviteFriendToGroup(groupId, friendId),
     
     // --- Group Chat & Events ---
-    listenToGroupChat: (groupId: string, callback: (chat: GroupChat | null) => void) => firebaseService.listenToGroupChat(groupId, callback),
-    getGroupChat: (groupId: string) => firebaseService.getGroupChat(groupId),
+    listenToGroupChat: (groupId, callback) => firebaseService.listenToGroupChat(groupId, callback),
+    getGroupChat: (groupId) => firebaseService.getGroupChat(groupId),
     sendGroupChatMessage: (groupId, sender, text) => firebaseService.sendGroupChatMessage(groupId, sender, text),
-    reactToGroupChatMessage: (groupId: string, messageId: string, userId: string, emoji: string) => firebaseService.reactToGroupChatMessage(groupId, messageId, userId, emoji),
-    getGroupEvents: (groupId: string) => firebaseService.getGroupEvents(groupId),
+    reactToGroupChatMessage: (groupId, messageId, userId, emoji) => firebaseService.reactToGroupChatMessage(groupId, messageId, userId, emoji),
+    getGroupEvents: (groupId) => firebaseService.getGroupEvents(groupId),
     createGroupEvent: (creator, groupId, title, description, date) => firebaseService.createGroupEvent(creator, groupId, title, description, date),
     rsvpToEvent: (userId, eventId) => firebaseService.rsvpToEvent(userId, eventId),
     
     // --- Admin Panel ---
     adminLogin: (email, password) => firebaseService.adminLogin(email, password),
-    adminRegister: (email, password) => firebaseService.adminRegister(email, password),
     getAdminDashboardStats: () => firebaseService.getAdminDashboardStats(),
     getAllUsersForAdmin: () => firebaseService.getAllUsersForAdmin(),
     updateUserRole: (userId, newRole) => firebaseService.updateUserRole(userId, newRole),
@@ -783,7 +690,7 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
     getPostById: (postId) => firebaseService.getPostById(postId),
     getPendingReports: () => firebaseService.getPendingReports(),
     resolveReport: (reportId, resolution) => firebaseService.resolveReport(reportId, resolution),
-    createReport: (reporter: User, content: Post | Comment | User, contentType: 'post' | 'comment' | 'user', reason: string) => firebaseService.createReport(reporter, content, contentType, reason),
+    createReport: (reporter, content, contentType, reason) => firebaseService.createReport(reporter, content, contentType, reason),
     banUser: (userId) => firebaseService.banUser(userId),
     unbanUser: (userId) => firebaseService.unbanUser(userId),
     warnUser: (userId, message) => firebaseService.warnUser(userId, message),
@@ -797,160 +704,11 @@ async getCategorizedExploreFeed(userId: string): Promise<CategorizedExploreFeed>
     verifyCampaignPayment: (campaignId, adminId) => firebaseService.verifyCampaignPayment(campaignId, adminId),
     adminUpdateUserProfilePicture: (userId, base64) => firebaseService.adminUpdateUserProfilePicture(userId, base64),
     reactivateUserAsAdmin: (userId) => firebaseService.reactivateUserAsAdmin(userId),
-    promoteGroupMember: (groupId: string, userToPromote: User, newRole: 'Admin' | 'Moderator') => firebaseService.promoteGroupMember(groupId, userToPromote, newRole),
-    demoteGroupMember: (groupId: string, userToDemote: User, oldRole: 'Admin' | 'Moderator') => firebaseService.demoteGroupMember(groupId, userToDemote, oldRole),
-    removeGroupMember: (groupId: string, userToRemove: User) => firebaseService.removeGroupMember(groupId, userToRemove),
-    approveJoinRequest: (groupId: string, userId: string) => firebaseService.approveJoinRequest(groupId, userId),
-    rejectJoinRequest: (groupId: string, userId: string) => firebaseService.rejectJoinRequest(groupId, userId),
-    approvePost: (postId: string) => firebaseService.approvePost(postId),
-    rejectPost: (postId: string) => firebaseService.rejectPost(postId),
-    getAgoraToken: async (channelName: string, uid: string | number): Promise<string | null> => {
-        const TOKEN_SERVER_URL = '/api/proxy';
-        try {
-            const response = await fetch(`${TOKEN_SERVER_URL}?channelName=${channelName}&uid=${uid}`);
-            if (!response.ok) throw new Error(`Token server responded with ${response.status}`);
-            const data = await response.json();
-            return data.rtcToken;
-        } catch (error) {
-            console.error("Could not fetch Agora token.", error);
-            return null;
-        }
-    },
-    listenToUserGroups(userId: string, callback: (groups: Group[]) => void): () => void {
-        let groupsUnsubscribe = () => {};
-        const userUnsubscribe = onSnapshot(doc(db, 'users', userId), (userDoc) => {
-            groupsUnsubscribe(); // Cleanup previous groups listener
-    
-            if (userDoc.exists()) {
-                const groupIds = userDoc.data().groupIds || [];
-                if (groupIds.length > 0) {
-                    const q = query(collection(db, 'groups'), where(documentId(), 'in', groupIds));
-                    groupsUnsubscribe = onSnapshot(q, (groupsSnapshot) => {
-                        const groups = groupsSnapshot.docs.map(d => {
-                            const data = d.data();
-                            return {
-                                id: d.id,
-                                ...data,
-                                createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt,
-                            } as Group;
-                        });
-                        callback(groups);
-                    }, (error) => {
-                        console.warn("Could not fetch user's groups by ID list due to permissions.", error.message);
-                        callback([]);
-                    });
-                } else {
-                    callback([]); // User is in no groups
-                }
-            } else {
-                callback([]); // User document doesn't exist
-            }
-        }, (error) => {
-            console.warn("Could not fetch user's groups due to permissions or data inconsistency.", error.message);
-            callback([]);
-        });
-    
-        // Return a function that unsubscribes from both listeners
-        return () => {
-            userUnsubscribe();
-            groupsUnsubscribe();
-        };
-    },
-
-    listenToGroup(groupId: string, callback: (group: Group | null) => void): () => void {
-        const groupRef = doc(db, 'groups', groupId);
-        return onSnapshot(groupRef, (doc) => {
-            if (doc.exists()) {
-                const data = doc.data();
-                callback({
-                    id: doc.id,
-                    ...data,
-                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt,
-                } as Group);
-            } else {
-                callback(null);
-            }
-        }, (error) => {
-            console.error(`Error listening to group ${groupId}:`, error);
-            callback(null);
-        });
-    },
-
-    listenToPostsForGroup(groupId: string, callback: (posts: Post[]) => void): () => void {
-        const postsRef = collection(db, 'posts');
-        const q = query(postsRef, where('groupId', '==', groupId), where('status', '==', 'approved'), orderBy('createdAt', 'desc'));
-        return onSnapshot(q, (snapshot) => {
-            const posts = snapshot.docs.map(docToPost);
-            callback(posts);
-        }, (error) => {
-            console.error(`Error listening to posts for group ${groupId}:`, error);
-            callback([]); // Return empty array on error
-        });
-    },
-
-    listenToGroupChat(groupId: string, callback: (chat: GroupChat | null) => void): () => void {
-        const chatRef = doc(db, 'groupChats', groupId);
-        return onSnapshot(chatRef, (doc) => {
-            if (doc.exists()) {
-                const data = doc.data();
-                callback({
-                    groupId: doc.id,
-                    messages: (data.messages || []).map((msg: any) => ({
-                        ...msg,
-                        createdAt: msg.createdAt instanceof Timestamp ? msg.createdAt.toDate().toISOString() : msg.createdAt,
-                    })),
-                } as GroupChat);
-            } else {
-                console.log(`Group chat for ${groupId} not found, creating it.`);
-                setDoc(chatRef, { messages: [] })
-                    .then(() => {
-                         callback({ groupId, messages: [] });
-                    })
-                    .catch(err => {
-                        console.error("Failed to auto-create group chat:", err);
-                        callback(null);
-                    });
-            }
-        }, (error) => {
-            console.error(`Error listening to group chat ${groupId}:`, error);
-            callback(null);
-        });
-    },
-    
-    async reactToGroupChatMessage(groupId: string, messageId: string, userId: string, emoji: string): Promise<void> {
-        const chatRef = doc(db, 'groupChats', groupId);
-        await runTransaction(db, async (transaction) => {
-            const chatDoc = await transaction.get(chatRef);
-            if (!chatDoc.exists()) throw "Chat does not exist!";
-            const messages = chatDoc.data().messages || [];
-            const msgIndex = messages.findIndex((m: any) => m.id === messageId);
-            if (msgIndex === -1) throw "Message not found!";
-    
-            const message = messages[msgIndex];
-            const reactions = message.reactions || {};
-            const previousReaction = Object.keys(reactions).find(key => reactions[key].includes(userId));
-    
-            if (previousReaction) {
-                reactions[previousReaction] = reactions[previousReaction].filter((id: string) => id !== userId);
-            }
-    
-            if (previousReaction !== emoji) {
-                if (!reactions[emoji]) {
-                    reactions[emoji] = [];
-                }
-                reactions[emoji].push(userId);
-            }
-            
-            for (const key in reactions) {
-                if (reactions[key].length === 0) {
-                    delete reactions[key];
-                }
-            }
-            
-            message.reactions = reactions;
-            messages[msgIndex] = message;
-    
-            transaction.update(chatRef, { messages });
-        });
-    },
+    promoteGroupMember: (groupId, userToPromote, newRole) => firebaseService.promoteGroupMember(groupId, userToPromote, newRole),
+    demoteGroupMember: (groupId, userToDemote, oldRole) => firebaseService.demoteGroupMember(groupId, userToDemote, oldRole),
+    removeGroupMember: (groupId, userToRemove) => firebaseService.removeGroupMember(groupId, userToRemove),
+    approveJoinRequest: (groupId, userId) => firebaseService.approveJoinRequest(groupId, userId),
+    rejectJoinRequest: (groupId, userId) => firebaseService.rejectJoinRequest(groupId, userId),
+    approvePost: (postId) => firebaseService.approvePost(postId),
+    rejectPost: (postId) => firebaseService.rejectPost(postId),
 };

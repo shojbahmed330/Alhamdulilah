@@ -205,6 +205,7 @@ interface FeedScreenProps {
   onAdViewed: (campaignId: string) => void;
   onAdClick: (post: Post) => void;
   onSharePost: (post: Post) => void;
+  onShareAsStory: (post: Post) => void;
   onOpenPhotoViewer: (post: Post, initialUrl?: string) => void;
   onDeletePost: (postId: string) => void;
   onReportPost: (post: Post) => void;
@@ -225,7 +226,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
     isLoading, posts: initialPosts, currentUser, onSetTtsMessage, lastCommand, onOpenProfile,
     onOpenComments, onReactToPost, onStartCreatePost, onRewardedAdClick, onAdViewed,
     onAdClick, onCommandProcessed, scrollState, onSetScrollState, onNavigate, friends, setSearchResults,
-    onSharePost, onOpenPhotoViewer, onDeletePost, onReportPost, hiddenPostIds, onHidePost, onSavePost, onCopyLink
+    onSharePost, onShareAsStory, onOpenPhotoViewer, onDeletePost, onReportPost, hiddenPostIds, onHidePost, onSavePost, onCopyLink
 }) => {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [adInjected, setAdInjected] = useState(false);
@@ -688,6 +689,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                     onAuthorClick={onOpenProfile}
                     onAdClick={onAdClick}
                     onSharePost={onSharePost}
+                    onShareAsStory={onShareAsStory}
                     onOpenPhotoViewer={onOpenPhotoViewer}
                     onDeletePost={onDeletePost}
                     onReportPost={onReportPost}

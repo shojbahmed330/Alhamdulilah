@@ -22,6 +22,7 @@ interface ExploreScreenProps {
   onOpenComments: (post: Post, commentToReplyTo?: Comment) => void;
   onOpenProfile: (userName: string) => void;
   onSharePost: (post: Post) => void;
+  onShareAsStory: (post: Post) => void;
   onOpenPhotoViewer: (post: Post, initialUrl?: string) => void;
   onDeletePost: (postId: string) => void;
   onReportPost: (post: Post) => void;

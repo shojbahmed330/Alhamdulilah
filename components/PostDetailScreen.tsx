@@ -25,6 +25,7 @@ interface PostDetailScreenProps {
   onReportComment: (comment: Comment) => void;
   onOpenProfile: (userName: string) => void;
   onSharePost: (post: Post) => void;
+  onShareAsStory: (post: Post) => void;
   onOpenPhotoViewer: (post: Post, initialUrl?: string) => void;
   onOpenComments: (post: Post, commentToReplyTo?: Comment) => void;
   scrollState: ScrollState;
@@ -35,7 +36,7 @@ interface PostDetailScreenProps {
   onCopyLink: (post: Post) => void;
 }
 
-const PostDetailScreen: React.FC<PostDetailScreenProps> = ({ postId, newlyAddedCommentId, currentUser, onSetTtsMessage, lastCommand, onReactToPost, onReactToComment, onOpenProfile, onSharePost, onOpenPhotoViewer, scrollState, onCommandProcessed, onGoBack, onPostComment, onEditComment, onDeleteComment, onOpenComments, onDeletePost, onReportPost, onReportComment, onHidePost, onSavePost, onCopyLink }) => {
+const PostDetailScreen: React.FC<PostDetailScreenProps> = ({ postId, newlyAddedCommentId, currentUser, onSetTtsMessage, lastCommand, onReactToPost, onReactToComment, onOpenProfile, onSharePost, onShareAsStory, onOpenPhotoViewer, scrollState, onCommandProcessed, onGoBack, onPostComment, onEditComment, onDeleteComment, onOpenComments, onDeletePost, onReportPost, onReportComment, onHidePost, onSavePost, onCopyLink }) => {
   const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -262,6 +263,7 @@ const PostDetailScreen: React.FC<PostDetailScreenProps> = ({ postId, newlyAddedC
           onOpenComments={onOpenComments}
           onAuthorClick={onOpenProfile}
           onSharePost={onSharePost}
+          onShareAsStory={onShareAsStory}
           onOpenPhotoViewer={onOpenPhotoViewer}
           onDeletePost={onDeletePost}
           onReportPost={onReportPost}

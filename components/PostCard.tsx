@@ -17,6 +17,7 @@ interface PostCardProps {
   onOpenComments: (post: Post, commentToReplyTo?: Comment) => void;
   onAuthorClick: (username: string) => void;
   onSharePost?: (post: Post) => void;
+  onShareAsStory?: (post: Post) => void;
   onAdClick?: (post: Post) => void;
   onDeletePost?: (postId: string) => void;
   onReportPost?: (post: Post) => void;
@@ -111,7 +112,7 @@ const ImageGridRenderer: React.FC<{
     }
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, isActive, isPlaying, onPlayPause, onReact, onOpenComments, onAuthorClick, onSharePost, onAdClick, onDeletePost, onReportPost, onOpenPhotoViewer, groupRole, isGroupAdmin, isPinned, onPinPost, onUnpinPost, onVote, isSaved, onSavePost, onCopyLink, onHidePost }) => {
+export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, isActive, isPlaying, onPlayPause, onReact, onOpenComments, onAuthorClick, onSharePost, onShareAsStory, onAdClick, onDeletePost, onReportPost, onOpenPhotoViewer, groupRole, isGroupAdmin, isPinned, onPinPost, onUnpinPost, onVote, isSaved, onSavePost, onCopyLink, onHidePost }) => {
   if (!post || !post.author) {
     return null;
   }
@@ -516,6 +517,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, isActive,
               {isMenuOpen && (
                 <div className="absolute top-full right-0 mt-1 w-48 bg-black border border-fuchsia-500/20 rounded-lg shadow-xl z-10 text-sm font-semibold">
                   <ul className="py-1">
+                    {isAuthor && post.videoUrl && onShareAsStory && (
+                        <li><button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onShareAsStory(post); }} className="w-full text-left px-4 py-2 hover:bg-slate-800 text-fuchsia-300 flex items-center gap-2"><Icon name="add-circle" className="w-5 h-5"/> Add to Story</button></li>
+                    )}
                     {isAuthor || isGroupAdmin ? (
                       <>
                         {isGroupAdmin && <li><button onClick={handlePin} className="w-full text-left px-4 py-2 hover:bg-slate-800 text-fuchsia-300">{isPinned ? 'Unpin Post' : 'Pin Post'}</button></li>}
