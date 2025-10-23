@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AppView, Group, User, GroupCategory } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -130,7 +131,8 @@ const GroupsHubScreen: React.FC<GroupsHubScreenProps> = ({ currentUser, onNaviga
 
   const handleCommand = useCallback(async (command: string) => {
     try {
-        const intentResponse = await geminiService.processIntent(command);
+        // FIX: Pass context to geminiService
+        const intentResponse = await geminiService.processIntent(command, { groupNames: groups.map(g => g.name) });
         const { intent, slots } = intentResponse;
 
         if (intent === 'intent_create_group') {
@@ -173,7 +175,7 @@ const GroupsHubScreen: React.FC<GroupsHubScreenProps> = ({ currentUser, onNaviga
     } finally {
         onCommandProcessed();
     }
-  }, [onCommandProcessed, onSetTtsMessage, groups]);
+  }, [onCommandProcessed, onSetTtsMessage, groups, handleViewGroup]);
   
   useEffect(() => {
     if (lastCommand) {

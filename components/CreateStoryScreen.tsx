@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Story, MusicTrack, StoryTextStyle, StoryPrivacy, AppView } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -179,7 +180,8 @@ const CreateStoryScreen: React.FC<CreateStoryScreenProps> = ({ currentUser, onSt
         if (!lastCommand) return;
 
         const processCommand = async () => {
-            const intentResponse = await geminiService.processIntent(lastCommand);
+            // FIX: Pass context to geminiService
+            const intentResponse = await geminiService.processIntent(lastCommand, {});
             const { intent, slots } = intentResponse;
 
             if (intent === 'intent_add_text_to_story') {

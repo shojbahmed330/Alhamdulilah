@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useEffect, useCallback } from 'react';
 import { User } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -23,7 +24,8 @@ const SearchResultsScreen: React.FC<SearchResultsScreenProps> = ({ results, quer
 
   const handleCommand = useCallback(async (command: string) => {
     try {
-        const intentResponse = await geminiService.processIntent(command);
+        // FIX: Pass user names context to geminiService
+        const intentResponse = await geminiService.processIntent(command, { userNames: results.map(r => r.name) });
         if (intentResponse.intent === 'intent_select_result' && intentResponse.slots?.index) {
           const index = Number(intentResponse.slots.index) - 1; // 1-based to 0-based
           if (results[index]) {

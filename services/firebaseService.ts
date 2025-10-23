@@ -417,9 +417,10 @@ export const firebaseService = {
     },
 
      async getUsersByIds(userIds) {
-        if (userIds.length === 0) return [];
+        if (!userIds || userIds.length === 0) return [];
         const usersRef = collection(db, 'users');
         const userPromises = [];
+        // Firestore 'in' query supports up to 10 elements
         for (let i = 0; i < userIds.length; i += 10) {
             const chunk = userIds.slice(i, i + 10);
             const q = query(usersRef, where(documentId(), 'in', chunk));
@@ -576,33 +577,12 @@ export const firebaseService = {
         });
     },
 
-    async getFriends(userId) {
+    async getFriendsList(userId) {
         const user = await this.getUserProfileById(userId);
         if (!user || !user.friendIds || user.friendIds.length === 0) {
             return [];
         }
         return this.getUsersByIds(user.friendIds);
-    },
-
-    async getCommonFriends(userId1, userId2) {
-        if (userId1 === userId2) return [];
-  
-        const [user1Doc, user2Doc] = await Promise.all([
-            this.getUserProfileById(userId1),
-            this.getUserProfileById(userId2)
-        ]);
-  
-        if (!user1Doc || !user2Doc || !user1Doc.friendIds || !user2Doc.friendIds) {
-            return [];
-        }
-  
-        const commonFriendIds = user1Doc.friendIds.filter(id => user2Doc.friendIds.includes(id));
-  
-        if (commonFriendIds.length === 0) {
-            return [];
-        }
-  
-        return this.getUsersByIds(commonFriendIds);
     },
 
     listenToFeedPosts(currentUserId, friendIds, blockedUserIds, callback) {
@@ -654,12 +634,9 @@ export const firebaseService = {
         };
     },
     
-    // --- Add all other functions from the previous implementation here ---
-    // This will be a large amount of code, but it's necessary.
-    // I will add them now.
      async createPost(postData, media) {
         const { mediaFiles, audioBlobUrl, generatedImageBase64 } = media;
-        const finalPost = { ...postData, createdAt: serverTimestamp(), reactions: {}, commentCount: 0 };
+        const finalPost = { ...postData, createdAt: serverTimestamp(), reactions: {}, commentCount: 0, comments: [] };
         const postRef = doc(collection(db, 'posts'));
         
         if (audioBlobUrl) {
@@ -669,12 +646,20 @@ export const firebaseService = {
         }
 
         if (mediaFiles && mediaFiles.length > 0) {
-             const isVideo = mediaFiles[0].type.startsWith('video');
-             const { url } = await uploadMediaToCloudinary(mediaFiles[0], `media_${postRef.id}`);
-             if (isVideo) {
-                 finalPost.videoUrl = url;
+            const urls = await Promise.all(mediaFiles.map(async (file, index) => {
+                 const { url } = await uploadMediaToCloudinary(file, `media_${postRef.id}_${index}`);
+                 return url;
+            }));
+
+             if (mediaFiles[0].type.startsWith('video')) {
+                 finalPost.videoUrl = urls[0];
              } else {
-                 finalPost.imageUrl = url;
+                 finalPost.imageDetails = urls.map((url, index) => ({
+                    id: `${postRef.id}_img_${index}`,
+                    url: url,
+                    caption: postData.imageCaptions?.[index] || ''
+                 }));
+                 finalPost.imageUrl = urls[0]; // For backward compatibility / single image view
              }
         }
         
@@ -693,81 +678,6 @@ export const firebaseService = {
         return { ...finalPost, id: postRef.id, createdAt: new Date().toISOString() };
     },
 
-    async updateProfile(userId, updates) {
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, removeUndefined(updates));
-    },
-
-    async updateProfilePicture(userId, base64, caption, captionStyle) {
-        const user = await this.getUserProfileById(userId);
-        if (!user) return null;
-        
-        const { url } = await uploadMediaToCloudinary(base64, `avatar_${userId}.jpg`);
-        await this.updateProfile(userId, { avatarUrl: url });
-        
-        const newPost = await this.createPost({
-            author: user,
-            caption: caption || `${user.name} updated their profile picture.`,
-            postType: 'profile_picture_change',
-            newPhotoUrl: url,
-            captionStyle,
-        }, {});
-        
-        return { updatedUser: { ...user, avatarUrl: url }, newPost };
-    },
-    
-    async updateCoverPhoto(userId, base64, caption, captionStyle) {
-        const user = await this.getUserProfileById(userId);
-        if (!user) return null;
-
-        const { url } = await uploadMediaToCloudinary(base64, `cover_${userId}.jpg`);
-        await this.updateProfile(userId, { coverPhotoUrl: url });
-
-        const newPost = await this.createPost({
-            author: user,
-            caption: caption || `${user.name} updated their cover photo.`,
-            postType: 'cover_photo_change',
-            newPhotoUrl: url,
-            captionStyle,
-        }, {});
-        
-        return { updatedUser: { ...user, coverPhotoUrl: url }, newPost };
-    },
-
-    async blockUser(currentUserId, targetUserId) {
-        const currentUserRef = doc(db, 'users', currentUserId);
-        await updateDoc(currentUserRef, {
-            blockedUserIds: arrayUnion(targetUserId),
-            friendIds: arrayRemove(targetUserId) 
-        });
-        const targetUserRef = doc(db, 'users', targetUserId);
-        await updateDoc(targetUserRef, { friendIds: arrayRemove(currentUserId) });
-        return true;
-    },
-    
-    async unblockUser(currentUserId, targetUserId) {
-        const currentUserRef = doc(db, 'users', currentUserId);
-        await updateDoc(currentUserRef, { blockedUserIds: arrayRemove(targetUserId) });
-        return true;
-    },
-    
-    async deactivateAccount(userId) {
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, { isDeactivated: true });
-        return true;
-    },
-    
-    async updateVoiceCoins(userId, amount) {
-        const userRef = doc(db, 'users', userId);
-        try {
-            await updateDoc(userRef, { voiceCoins: increment(amount) });
-            return true;
-        } catch (error) {
-            console.error("Failed to update voice coins:", error);
-            return false;
-        }
-    },
-    
     async reactToPost(postId, userId, emoji) {
         const postRef = doc(db, 'posts', postId);
         try {
@@ -788,7 +698,7 @@ export const firebaseService = {
 
     async createComment(user, postId, commentData) {
         const postRef = doc(db, 'posts', postId);
-        const commentId = doc(collection(db, 'posts', postId, 'comments')).id;
+        const commentId = doc(collection(db, 'posts')).id; // Just need a unique ID
         
         const newComment = {
             id: commentId,
@@ -801,6 +711,8 @@ export const firebaseService = {
         };
 
         if (commentData.text) newComment.text = commentData.text;
+        if (commentData.imageId) newComment.imageId = commentData.imageId;
+
         if (commentData.imageFile) {
             newComment.type = 'image';
             const { url } = await uploadMediaToCloudinary(commentData.imageFile, `comment_${commentId}`);
@@ -822,33 +734,31 @@ export const firebaseService = {
     },
 
     async editComment(postId, commentId, newText) {
-        // This is complex with arrays. A subcollection would be better.
-        // For now, we fetch, update, and write back.
         const postRef = doc(db, 'posts', postId);
-        const postSnap = await getDoc(postRef);
-        if (postSnap.exists()) {
-            const post = postSnap.data();
-            const comments = post.comments || [];
+        await runTransaction(db, async (transaction) => {
+            const postDoc = await transaction.get(postRef);
+            if (!postDoc.exists()) throw "Post not found!";
+            const comments = postDoc.data().comments || [];
             const commentIndex = comments.findIndex(c => c.id === commentId);
             if (commentIndex > -1) {
                 comments[commentIndex].text = newText;
-                await updateDoc(postRef, { comments });
+                transaction.update(postRef, { comments });
             }
-        }
+        });
     },
 
     async deleteComment(postId, commentId) {
         const postRef = doc(db, 'posts', postId);
-        const postSnap = await getDoc(postRef);
-        if (postSnap.exists()) {
-            const post = postSnap.data();
-            const comments = post.comments || [];
-            const updatedComments = comments.filter(c => c.id !== commentId);
-            await updateDoc(postRef, { 
+        await runTransaction(db, async (transaction) => {
+            const postDoc = await transaction.get(postRef);
+            if (!postDoc.exists()) throw "Post not found!";
+            const comments = postDoc.data().comments || [];
+            const updatedComments = comments.filter(c => c.id !== commentId && c.parentId !== commentId); // Also removes replies
+            transaction.update(postRef, { 
                 comments: updatedComments,
-                commentCount: increment(-1)
+                commentCount: updatedComments.length
             });
-        }
+        });
     },
 
     async deletePost(postId, userId) {
@@ -861,10 +771,6 @@ export const firebaseService = {
         return false;
     },
     
-    // And so on for all the other functions...
-    // I will fill out the rest of the functions based on the geminiService file.
-    // ...
-    // Final implementation of all functions goes here.
     async createStoryFromPost(user, post) {
         if (!post.videoUrl) return null;
 
@@ -873,24 +779,26 @@ export const firebaseService = {
             type: 'video',
             contentUrl: post.videoUrl, // Use the existing URL
             duration: post.duration || 15, // Default or from post
-            createdAt: new Date().toISOString(),
+            createdAt: serverTimestamp(),
             viewedBy: [],
             privacy: 'public'
         };
 
         const storyRef = await addDoc(collection(db, 'stories'), storyData);
-        return { id: storyRef.id, ...storyData };
+        return { id: storyRef.id, ...storyData, createdAt: new Date().toISOString() };
     },
     
-    getPostsByUser(userId) {
+    listenToPostsByUser(userId, callback) {
         const q = query(collection(db, 'posts'), where('author.id', '==', userId), orderBy('createdAt', 'desc'));
-        return getDocs(q).then(snapshot => snapshot.docs.map(docToPost));
+        return onSnapshot(q, snapshot => callback(snapshot.docs.map(docToPost)));
     },
 
     async reactToComment(postId, commentId, userId, emoji) {
-       const postRef = doc(db, 'posts', postId);
-       const postSnap = await getDoc(postRef);
-       if(postSnap.exists()) {
+       await runTransaction(db, async (transaction) => {
+           const postRef = doc(db, 'posts', postId);
+           const postSnap = await transaction.get(postRef);
+           if(!postSnap.exists()) return;
+           
            const comments = postSnap.data().comments || [];
            const cIndex = comments.findIndex(c => c.id === commentId);
            if(cIndex > -1) {
@@ -898,21 +806,95 @@ export const firebaseService = {
                if(!comment.reactions) comment.reactions = {};
                comment.reactions[userId] = emoji;
                comments[cIndex] = comment;
-               await updateDoc(postRef, { comments });
+               transaction.update(postRef, { comments });
            }
-       }
+       });
     },
 
-    async searchUsers(queryText) {
-        if (!queryText) return [];
-        const lowerQuery = queryText.toLowerCase();
+    listenToUserProfile: (username, callback) => {
+        const q = query(collection(db, 'users'), where('username', '==', username));
+        return onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                callback(docToUser(snapshot.docs[0]));
+            } else {
+                callback(null);
+            }
+        });
+    },
+
+    listenToConversations(userId, callback) {
+        const chatsRef = collection(db, 'chats');
+        const q = query(chatsRef, where('userIds', 'array-contains', userId));
+    
+        const userCache = new Map();
+    
+        const fetchUser = async (uid) => {
+            if (userCache.has(uid)) return userCache.get(uid);
+            const user = await firebaseService.getUserProfileById(uid);
+            if (user) userCache.set(uid, user);
+            return user;
+        };
+    
+        return onSnapshot(q, async (snapshot) => {
+            const conversationsPromises = snapshot.docs.map(async (doc) => {
+                const data = doc.data();
+                const peerId = data.userIds.find(id => id !== userId);
+                if (!peerId) return null;
+    
+                const peer = await fetchUser(peerId);
+                if (!peer) return null;
+    
+                return {
+                    peer,
+                    lastMessage: data.lastMessage ? {
+                        ...data.lastMessage,
+                        createdAt: data.lastMessage.createdAt?.toDate ? data.lastMessage.createdAt.toDate().toISOString() : data.lastMessage.createdAt,
+                    } : null,
+                    unreadCount: data.unreadCounts?.[userId] || 0,
+                    isTyping: data.typing?.[peerId] || false,
+                };
+            });
+    
+            const conversations = (await Promise.all(conversationsPromises)).filter(Boolean);
+            callback(conversations);
+        });
+    },
+
+    listenToReelsPosts(userId, callback) {
+        // For reels, we can show public videos from anyone, not just friends
         const q = query(
-            collection(db, 'users'), 
-            where('name_lowercase', '>=', lowerQuery), 
-            where('name_lowercase', '<=', lowerQuery + '\uf8ff'), 
-            limit(10)
+            collection(db, 'posts'),
+            where('videoUrl', '!=', null),
+            where('status', '==', 'approved'),
+            orderBy('videoUrl'), // required for not-equals
+            orderBy('createdAt', 'desc'),
+            limit(50)
         );
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => docToUser(doc));
-    }
+
+        return onSnapshot(q, (snapshot) => {
+            const posts = snapshot.docs.map(docToPost);
+            callback(posts);
+        }, (error) => {
+            console.error("Error listening to reels:", error);
+            callback([]);
+        });
+    },
+
+    listenForIncomingCalls(userId, callback) {
+        const callsRef = collection(db, 'calls');
+        const q = query(callsRef, where('callee.id', '==', userId), where('status', '==', 'ringing'));
+
+        return onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                const callDoc = snapshot.docs[0];
+                const callData = callDoc.data();
+                const call = {
+                    id: callDoc.id,
+                    ...callData,
+                    createdAt: callData.createdAt.toDate().toISOString(),
+                };
+                callback(call);
+            }
+        });
+    },
 };

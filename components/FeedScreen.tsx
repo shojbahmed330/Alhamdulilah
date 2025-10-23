@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Post, User, ScrollState, Campaign, AppView, Story, Comment } from '../types';
 import { PostCard } from './PostCard';
@@ -8,7 +9,6 @@ import { geminiService } from '../services/geminiService';
 import RewardedAdWidget from './RewardedAdWidget';
 import { getTtsPrompt, VOICE_EMOJI_MAP } from '../constants';
 import StoriesTray from './StoriesTray';
-import { firebaseService } from '../services/firebaseService';
 import { useSettings } from '../contexts/SettingsContext';
 
 const localCommandMap: { [key: string]: { intent: string; slots?: any } } = {
@@ -261,7 +261,6 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   
   const fetchStories = useCallback(async () => {
       const realStories = await geminiService.getStories(currentUser.id);
-      // FIX: Changed to geminiService for consistency
       const adStory = await geminiService.getInjectableStoryAd(currentUser);
   
       if (adStory) {
@@ -296,7 +295,6 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
     const injectAd = async () => {
         if (!isLoading && !adInjected && posts.length > 2) {
             setAdInjected(true);
-            // FIX: Changed to geminiService for consistency
             const adPost = await geminiService.getInjectableAd(currentUser);
             if (adPost) {
                 const newPosts = [...posts];

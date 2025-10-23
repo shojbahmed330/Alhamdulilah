@@ -1,9 +1,9 @@
 
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RecordingState, User, Comment } from '../types';
 import Waveform from './Waveform';
-import { firebaseService } from '../services/firebaseService';
 import { geminiService } from '../services/geminiService';
 import { getTtsPrompt } from '../constants';
 import Icon from './Icon';
@@ -129,15 +129,18 @@ const CreateCommentScreen: React.FC<CreateCommentScreenProps> = ({ user, postId,
     try {
         if (mode === 'text' && text.trim()) {
             onSetTtsMessage('Posting text comment...');
-            newComment = await firebaseService.createComment(user, postId, { text });
+            // FIX: Changed to geminiService for consistency
+            newComment = await geminiService.createComment(user, postId, { text });
         } else if (mode === 'image' && imageFile) {
             onSetTtsMessage('Uploading image comment...');
-            newComment = await firebaseService.createComment(user, postId, { imageFile });
+            // FIX: Changed to geminiService for consistency
+            newComment = await geminiService.createComment(user, postId, { imageFile });
         } else if (mode === 'audio' && duration > 0 && audioUrl) {
             onSetTtsMessage('Posting voice comment...');
             setRecordingState(RecordingState.UPLOADING);
             const audioBlob = await fetch(audioUrl).then(r => r.blob());
-            newComment = await firebaseService.createComment(user, postId, { duration, audioBlob });
+            // FIX: Changed to geminiService for consistency
+            newComment = await geminiService.createComment(user, postId, { duration, audioBlob });
         } else {
              onSetTtsMessage('Please add content to your comment.');
              setIsPosting(false);

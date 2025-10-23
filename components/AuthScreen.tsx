@@ -1,7 +1,9 @@
 
+
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { AuthMode } from '../types';
-import { firebaseService } from '../services/firebaseService';
+import { geminiService } from '../services/geminiService';
 import Icon from './Icon';
 import { getTtsPrompt } from '../constants';
 import { useSettings } from '../contexts/SettingsContext';
@@ -62,7 +64,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
                     setIdentifier(cleanedText);
                     onSetTtsMessage(getTtsPrompt('login_password', language));
                 } else {
-                    await firebaseService.signInWithEmail(identifier, cleanedText);
+                    // FIX: Changed to geminiService for consistency
+                    await geminiService.signInWithEmail(identifier, cleanedText);
                 }
                 break;
             case AuthMode.SIGNUP_FULLNAME:
@@ -72,7 +75,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
                 break;
             case AuthMode.SIGNUP_USERNAME:
                 const formattedUsername = cleanedText.toLowerCase().replace(/\s/g, '');
-                const isTaken = await firebaseService.isUsernameTaken(formattedUsername);
+                // FIX: Changed to geminiService for consistency
+                const isTaken = await geminiService.isUsernameTaken(formattedUsername);
                 if(isTaken) {
                     onSetTtsMessage(getTtsPrompt('signup_username_invalid', language));
                     setAuthError(getTtsPrompt('signup_username_invalid', language));
@@ -105,7 +109,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
                     setPassword('');
                     setMode(AuthMode.SIGNUP_PASSWORD);
                 } else {
-                    const success = await firebaseService.signUpWithEmail(email, password, fullName, username);
+                    // FIX: Changed to geminiService for consistency
+                    const success = await geminiService.signUpWithEmail(email, password, fullName, username);
                     if (!success) {
                         setAuthError("Could not create account. The email might be in use.");
                         onSetTtsMessage("Could not create account. The email might be in use.");

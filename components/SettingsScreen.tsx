@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Icon from './Icon';
 import { User, ScrollState } from '../types';
@@ -62,7 +63,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
         fetchBlockedUsers();
     }, [currentUser.blockedUserIds]);
 
-    const handleSaveChanges = async () => {
+    const handleSaveChanges = useCallback(async () => {
         onSetTtsMessage("Saving settings...");
         await onUpdateSettings({
             name,
@@ -71,14 +72,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onU
             notificationSettings,
         });
         onSetTtsMessage("Your settings have been saved.");
-    };
+    }, [onSetTtsMessage, onUpdateSettings, name, bio, privacySettings, notificationSettings]);
     
     useEffect(() => {
-        if(lastCommand === 'intent_save_settings') {
-            handleSaveChanges();
+        const handleCommand = async () => {
+            if (!lastCommand) return;
+            // FIX: Use geminiService.processIntent to handle the command
+            const intentResponse = await geminiService.processIntent(lastCommand);
+            if(intentResponse.intent === 'intent_save_settings') {
+                handleSaveChanges();
+            }
             onCommandProcessed();
-        }
-    }, [lastCommand, onCommandProcessed]);
+        };
+        handleCommand();
+    }, [lastCommand, onCommandProcessed, handleSaveChanges]);
 
     return (
         <div className="h-full w-full overflow-y-auto p-4 sm:p-8">

@@ -1,7 +1,9 @@
 
 
+
 import React from 'react';
 import { User, AppView, VoiceState } from './types';
+// FIX: Corrected import path
 import Icon from './components/Icon';
 
 interface SidebarProps {

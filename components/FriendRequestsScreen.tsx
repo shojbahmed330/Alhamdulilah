@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User, ScrollState } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -66,7 +67,8 @@ const FriendRequestsScreen: React.FC<FriendRequestsScreenProps> = ({ currentUser
   };
 
   const handleCommand = useCallback(async (command: string) => {
-    const intentResponse = await geminiService.processIntent(command);
+    // FIX: Pass user names context to geminiService
+    const intentResponse = await geminiService.processIntent(command, { userNames: requests.map(r => r.name) });
     if (intentResponse.slots && typeof intentResponse.slots.target_name === 'string') {
         const targetName = intentResponse.slots.target_name;
         const targetUser = requests.find(r => r.name.toLowerCase() === targetName.toLowerCase());
@@ -79,7 +81,7 @@ const FriendRequestsScreen: React.FC<FriendRequestsScreenProps> = ({ currentUser
             }
         }
     }
-  }, [requests]);
+  }, [requests, handleAccept, handleDecline]);
 
   useEffect(() => {
     if (lastCommand) {

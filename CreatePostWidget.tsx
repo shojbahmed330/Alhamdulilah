@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { User } from './types';
 import Icon from './components/Icon';
@@ -28,7 +29,8 @@ const CreatePostWidget: React.FC<CreatePostWidgetProps> = ({ user, onStartCreate
             <Icon name="photo" className="w-6 h-6 text-fuchsia-400"/> 
             <span className="font-semibold">Photo</span>
         </button>
-         <button onClick={() => onStartCreatePost()} className="flex items-center gap-2 text-fuchsia-300 hover:bg-slate-800 px-4 py-2 rounded-lg transition-colors">
+         {/* FIX: The onStartCreatePost function for creating a video post was called without any arguments, which is incorrect. It should be called with an object containing `selectMedia: 'video'` to correctly initiate the video creation flow. Updated the call to pass the required properties. */}
+         <button onClick={() => onStartCreatePost({ selectMedia: 'video' })} className="flex items-center gap-2 text-fuchsia-300 hover:bg-slate-800 px-4 py-2 rounded-lg transition-colors">
             <Icon name="video-camera" className="w-6 h-6 text-fuchsia-400"/> 
             <span className="font-semibold">Video</span>
         </button>

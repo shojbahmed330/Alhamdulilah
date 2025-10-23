@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AppView, User, VoiceState, Post, Comment, ScrollState, Notification, Campaign, Group, Story, Conversation, Call } from './types';
 import AuthScreen from './components/AuthScreen';
@@ -18,7 +19,6 @@ import Sidebar from './components/Sidebar';
 import Icon from './components/Icon';
 import AdModal from './components/AdModal';
 import { geminiService } from './services/geminiService';
-import { firebaseService } from './services/firebaseService';
 import { IMAGE_GENERATION_COST, REWARD_AD_COIN_VALUE, getTtsPrompt } from './constants';
 import ConversationsScreen from './components/ConversationsScreen';
 import AdsScreen from './components/AdsScreen';
@@ -242,7 +242,6 @@ const UserApp: React.FC = () => {
   
   const handleOpenConversation = useCallback(async (peer: User) => {
     if (!user) return;
-    // FIX: Changed to geminiService for consistency
     await geminiService.ensureChatDocumentExists(user, peer);
     
     const isMobile = window.innerWidth < 768;
@@ -273,7 +272,6 @@ const UserApp: React.FC = () => {
 
     isFirstConversationLoad.current = true; 
 
-    // FIX: Changed to geminiService for consistency
     const unsubscribe = geminiService.listenToConversations(user.id, (newConvos) => {
         const convoWithNewMessage = newConvos.find(convo => {
             if (!convo.lastMessage || convo.lastMessage.senderId === user.id) {
@@ -307,7 +305,6 @@ const UserApp: React.FC = () => {
 
         const counts: Record<string, number> = {};
         newConvos.forEach(convo => {
-            // FIX: Changed to geminiService for consistency
             const chatId = geminiService.getChatId(user.id, convo.peer.id);
             counts[chatId] = convo.unreadCount || 0;
         });
@@ -340,9 +337,9 @@ const UserApp: React.FC = () => {
   const handleLogout = useCallback(async () => {
     const currentUserForLogout = userRef.current;
     if (currentUserForLogout) {
-        await firebaseService.signOutUser(currentUserForLogout.id);
+        await geminiService.signOutUser(currentUserForLogout.id);
     } else {
-        await firebaseService.signOutUser(null);
+        await geminiService.signOutUser(null);
     }
   }, []);
   
@@ -412,7 +409,7 @@ const UserApp: React.FC = () => {
       const handleBeforeUnload = () => {
           const currentUserForUnload = userRef.current;
           if (currentUserForUnload) {
-              firebaseService.updateUserOnlineStatus(currentUserForUnload.id, 'offline');
+              geminiService.updateUserOnlineStatus(currentUserForUnload.id, 'offline');
           }
       };
       window.addEventListener('beforeunload', handleBeforeUnload);
@@ -423,7 +420,7 @@ const UserApp: React.FC = () => {
 
   // Effect 1: Handles authentication state changes. Only sets the current user ID or handles logout.
   useEffect(() => {
-    const unsubscribeAuth = firebaseService.onAuthStateChanged((userAuth) => {
+    const unsubscribeAuth = geminiService.onAuthStateChanged((userAuth) => {
         setCurrentUserId(userAuth?.id || null);
         if (!userAuth) {
             setUser(null);
@@ -446,9 +443,9 @@ const UserApp: React.FC = () => {
       if (!currentUserId) return;
 
       let isFirstLoad = true;
-      firebaseService.updateUserOnlineStatus(currentUserId, 'online');
+      geminiService.updateUserOnlineStatus(currentUserId, 'online');
 
-      const unsubscribeUserDoc = firebaseService.listenToCurrentUser(currentUserId, async (userProfile) => {
+      const unsubscribeUserDoc = geminiService.listenToCurrentUser(currentUserId, async (userProfile) => {
           if (userProfile && !userProfile.isDeactivated && !userProfile.isBanned) {
               setUser(userProfile);
 
@@ -482,26 +479,23 @@ const UserApp: React.FC = () => {
     let unsubscribes: (()=>void)[] = [];
     
     setIsLoadingReels(true);
-    // FIX: Changed to geminiService for consistency
     const unsubscribeReelsPosts = geminiService.listenToReelsPosts(user.id, (newReelsPosts) => {
         setReelsPosts(newReelsPosts);
         setIsLoadingReels(false);
     });
     unsubscribes.push(unsubscribeReelsPosts);
     
-    const unsubscribeFriendRequests = firebaseService.listenToFriendRequests(user.id, setFriendRequests);
+    const unsubscribeFriendRequests = geminiService.listenToFriendRequests(user.id, setFriendRequests);
     unsubscribes.push(unsubscribeFriendRequests);
 
-    const unsubscribeNotifications = firebaseService.listenToNotifications(user.id, setNotifications);
+    const unsubscribeNotifications = geminiService.listenToNotifications(user.id, setNotifications);
     unsubscribes.push(unsubscribeNotifications);
     
-    // FIX: Changed to geminiService for consistency
     const unsubscribeCalls = geminiService.listenForIncomingCalls(user.id, (call) => {
         setIncomingCall(call);
     });
     unsubscribes.push(unsubscribeCalls);
-
-    // FIX: Changed to geminiService for consistency
+    
     const unsubscribeGroups = geminiService.listenToUserGroups(user.id, setGroups);
     unsubscribes.push(unsubscribeGroups);
 
@@ -511,27 +505,22 @@ const UserApp: React.FC = () => {
   }, [user?.id]);
 
   // Effect 4: Manages data subscriptions that depend on friend/block lists.
-  // This effect will ONLY re-run if the content of friendIds or blockedUserIds changes.
   useEffect(() => {
     if (!user?.id) return;
 
     let unsubscribes: (()=>void)[] = [];
     
     setIsLoadingFeed(true);
-    const unsubscribePosts = firebaseService.listenToFeedPosts(user.id, userFriendIds, userBlockedIds, (feedPosts) => {
+    const unsubscribePosts = geminiService.listenToFeedPosts(user.id, userFriendIds, userBlockedIds, (feedPosts) => {
         setPosts(feedPosts);
         setIsLoadingFeed(false);
     });
     unsubscribes.push(unsubscribePosts);
     
-    // --- FETCH FRIENDS (NO POLLING) ---
-    // The previous polling logic was causing permission errors. 
-    // This fetches friends once when the friend list changes, making the app more stable.
     let isMounted = true;
     const fetchFriends = async () => {
         if (!user?.id) return;
         try {
-            // FIX: Changed to geminiService for consistency
             const friendsData = await geminiService.getFriendsList(user.id);
             if (isMounted) {
                 setFriends(friendsData);
@@ -703,7 +692,7 @@ const UserApp: React.FC = () => {
       if (isOpen && user) {
           const unreadNotifications = notifications.filter(n => !n.read);
           if (unreadNotifications.length > 0) {
-              await firebaseService.markNotificationsAsRead(user.id, unreadNotifications);
+              await geminiService.markNotificationsAsRead(user.id, unreadNotifications);
           }
       }
   }
@@ -762,7 +751,6 @@ const UserApp: React.FC = () => {
   };
 
   const handleAdViewed = (campaignId: string) => {
-      // FIX: Changed to geminiService for consistency
       geminiService.trackAdView(campaignId);
   };
 
@@ -804,7 +792,6 @@ const UserApp: React.FC = () => {
   const handleAdClick = async (post: Post) => {
     if (!user || !post.isSponsored || !post.campaignId) return;
 
-    // FIX: Changed to geminiService for consistency
     await geminiService.trackAdClick(post.campaignId);
     
     if (post.allowLeadForm) {
@@ -814,7 +801,7 @@ const UserApp: React.FC = () => {
         setTtsMessage(`Opening link for ${post.sponsorName}...`);
         window.open(post.websiteUrl, '_blank', 'noopener,noreferrer');
     } else if (post.allowDirectMessage && post.sponsorId) {
-        const sponsorUser = await firebaseService.getUserProfileById(post.sponsorId);
+        const sponsorUser = await geminiService.getUserById(post.sponsorId);
         if (sponsorUser) {
             setTtsMessage(`Opening conversation with ${sponsorUser.name}.`);
             await handleOpenConversation(sponsorUser);
@@ -822,7 +809,7 @@ const UserApp: React.FC = () => {
             setTtsMessage(`Could not find sponsor ${post.sponsorName}.`);
         }
     } else if (post.sponsorId) {
-        const sponsorUser = await firebaseService.getUserProfileById(post.sponsorId);
+        const sponsorUser = await geminiService.getUserById(post.sponsorId);
         if (sponsorUser) {
             setTtsMessage(`Opening profile for ${sponsorUser.name}.`);
             navigate(AppView.PROFILE, { username: sponsorUser.username });
@@ -841,7 +828,6 @@ const UserApp: React.FC = () => {
     }
     
     try {
-        // FIX: Changed to geminiService for consistency
         await geminiService.submitLead({
             campaignId: leadFormPost.campaignId,
             sponsorId: leadFormPost.sponsorId,
@@ -910,7 +896,7 @@ const UserApp: React.FC = () => {
   
   const handleReactToPost = async (postId: string, emoji: string) => {
     if (!user) return;
-    const success = await firebaseService.reactToPost(postId, user.id, emoji);
+    const success = await geminiService.reactToPost(postId, user.id, emoji);
     if (!success) {
       setTtsMessage(`Could not react. You may be offline.`);
     }
@@ -918,13 +904,12 @@ const UserApp: React.FC = () => {
 
   const handleReactToImage = async (postId: string, imageId: string, emoji: string) => {
     if (!user) return;
-    // FIX: Changed to geminiService for consistency
     await geminiService.reactToImage(postId, imageId, user.id, emoji);
   };
 
   const handleReactToComment = async (postId: string, commentId: string, emoji: string) => {
     if (!user) return;
-    await firebaseService.reactToComment(postId, commentId, user.id, emoji);
+    await geminiService.reactToComment(postId, commentId, user.id, emoji);
   };
 
   const handlePostComment = async (postId: string, text: string, parentId: string | null = null, imageId?: string) => {
@@ -933,22 +918,22 @@ const UserApp: React.FC = () => {
         setTtsMessage(getTtsPrompt('comment_suspended', language));
         return;
     }
-    await firebaseService.createComment(user, postId, { text, parentId, imageId });
+    await geminiService.createComment(user, postId, { text, parentId, imageId });
   };
 
   const handleEditComment = async (postId: string, commentId: string, newText: string) => {
     if (!user) return;
-    await firebaseService.editComment(postId, commentId, newText);
+    await geminiService.editComment(postId, commentId, newText);
   };
   
   const handleDeleteComment = async (postId: string, commentId: string) => {
       if (!user) return;
-      await firebaseService.deleteComment(postId, commentId);
+      await geminiService.deleteComment(postId, commentId);
   };
 
   const handleDeletePost = async (postId: string) => {
     if (!user) return;
-    const success = await firebaseService.deletePost(postId, user.id);
+    const success = await geminiService.deletePost(postId, user.id);
     if (success) {
       setTtsMessage("Your post has been successfully deleted.");
       if (currentView.view === AppView.POST_DETAILS && currentView.props?.postId === postId) {
@@ -979,6 +964,18 @@ const UserApp: React.FC = () => {
         setTtsMessage("Share options are now open.");
     }
   };
+  
+   const handleShareAsStory = async (post: Post) => {
+    if (!user) return;
+    const newStory = await geminiService.createStoryFromPost(user, post);
+    if (newStory) {
+        setTtsMessage("Post successfully shared to your story!");
+        // Optionally navigate to the story viewer
+        // onNavigate(AppView.STORY_VIEWER, { ... });
+    } else {
+        setTtsMessage("Could not share this post as a story.");
+    }
+   };
 
   const handleOpenPhotoViewer = (post: Post, initialUrl?: string) => {
     let allUrls: string[] = [];
@@ -1004,7 +1001,7 @@ const UserApp: React.FC = () => {
     setIsLoadingViewerPost(false); 
 
     if (!post.isSponsored && !post.id.startsWith('ad_')) {
-        const unsubscribe = firebaseService.listenToPost(post.id, (updatedPost) => {
+        const unsubscribe = geminiService.listenToPost(post.id, (updatedPost) => {
             if (updatedPost) {
                 setViewerPost(updatedPost);
             } else {
@@ -1078,7 +1075,6 @@ const UserApp: React.FC = () => {
   };
   
   const handleAcceptCall = async (call: Call) => {
-      // FIX: Changed to geminiService for consistency
       await geminiService.updateCallStatus(call.id, 'active');
       setIncomingCall(null);
       navigate(AppView.CALL_SCREEN, {
@@ -1089,7 +1085,6 @@ const UserApp: React.FC = () => {
   };
 
   const handleRejectCall = async (call: Call) => {
-      // FIX: Changed to geminiService for consistency
       await geminiService.updateCallStatus(call.id, 'declined');
       setIncomingCall(null);
   };
@@ -1119,6 +1114,7 @@ const UserApp: React.FC = () => {
       onOpenProfile: handleOpenProfile,
       onOpenComments: handleOpenComments,
       onSharePost: handleSharePost,
+      onShareAsStory: handleShareAsStory,
       onOpenPhotoViewer: handleOpenPhotoViewer,
       onLogout: handleLogout,
       groups,

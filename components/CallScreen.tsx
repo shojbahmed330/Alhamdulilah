@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User, Call } from '../types';
-import { firebaseService } from '../services/firebaseService';
+// FIX: Removed unused firebaseService import
 import Icon from './Icon';
 import { AGORA_APP_ID } from '../constants';
 import AgoraRTC from 'agora-rtc-sdk-ng';
@@ -55,7 +56,8 @@ const CallScreen: React.FC<CallScreenProps> = ({ currentUser, peerUser, callId, 
     // Call state listener
     useEffect(() => {
         let isMounted = true;
-        const unsubscribe = firebaseService.listenToCall(callId, (liveCall) => {
+        // FIX: Changed to geminiService for consistency
+        const unsubscribe = geminiService.listenToCall(callId, (liveCall) => {
             if (!isMounted) return;
 
             setCall(liveCall);
@@ -96,7 +98,8 @@ const CallScreen: React.FC<CallScreenProps> = ({ currentUser, peerUser, callId, 
         if (isCaller && call?.status === 'ringing') {
             const timeout = setTimeout(() => {
                 if (callStatusRef.current === 'ringing') {
-                    firebaseService.updateCallStatus(callId, 'missed');
+                    // FIX: Changed to geminiService for consistency
+                    geminiService.updateCallStatus(callId, 'missed');
                 }
             }, 30000); // 30 second timeout
             return () => clearTimeout(timeout);
@@ -105,9 +108,11 @@ const CallScreen: React.FC<CallScreenProps> = ({ currentUser, peerUser, callId, 
 
     const handleHangUp = useCallback(() => {
         if (callStatusRef.current === 'ringing' && !isCaller) {
-             firebaseService.updateCallStatus(callId, 'declined');
+             // FIX: Changed to geminiService for consistency
+             geminiService.updateCallStatus(callId, 'declined');
         } else {
-             firebaseService.updateCallStatus(callId, 'ended');
+             // FIX: Changed to geminiService for consistency
+             geminiService.updateCallStatus(callId, 'ended');
         }
     }, [callId, isCaller]);
 
@@ -127,7 +132,8 @@ const CallScreen: React.FC<CallScreenProps> = ({ currentUser, peerUser, callId, 
 
             client.on('user-left', () => {
                 setRemoteUser(null);
-                firebaseService.updateCallStatus(callId, 'ended');
+                // FIX: Changed to geminiService for consistency
+                geminiService.updateCallStatus(callId, 'ended');
             });
             
             const uid = stringToIntegerHash(currentUser.id);

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Group, Post, User, AppView, GroupRole, Comment } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -252,7 +253,8 @@ const GroupPageScreen: React.FC<GroupPageScreenProps> = ({
     if (!group) return;
 
     try {
-        const intentResponse = await geminiService.processIntent(command);
+        // FIX: Pass context to geminiService
+        const intentResponse = await geminiService.processIntent(command, {});
         const { intent } = intentResponse;
 
         switch(intent) {
@@ -286,7 +288,7 @@ const GroupPageScreen: React.FC<GroupPageScreenProps> = ({
     } finally {
         onCommandProcessed();
     }
-}, [group, canManage, isMember, onNavigate, onSetTtsMessage, onCommandProcessed, onGoBack, language]);
+}, [group, canManage, isMember, onNavigate, onSetTtsMessage, onCommandProcessed, onGoBack, language, groupId]);
 
 useEffect(() => {
     if (lastCommand) {

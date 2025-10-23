@@ -1,10 +1,10 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User, Post, FriendshipStatus, ScrollState, AppView, Comment } from '../types';
 import { PostCard } from './PostCard';
 import Icon from './Icon';
 import { geminiService } from '../services/geminiService';
-import { firebaseService } from '../services/firebaseService';
 import { getTtsPrompt } from '../constants';
 import ImageCropper from './ImageCropper';
 import { useSettings } from '../contexts/SettingsContext';
@@ -152,15 +152,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   // Effect 1: Listen for the user profile document and set the main user state
   useEffect(() => {
-    setIsLoading(true); // Start loading when username changes
-    isInitialLoadRef.current = true; // Reset initial load flag
+    setIsLoading(true);
+    isInitialLoadRef.current = true;
 
-    // FIX: Changed to geminiService for consistency
     const unsubscribe = geminiService.listenToUserProfile(username, (user) => {
       setProfileUser(user);
       if (!user) {
         onSetTtsMessage(`Profile for ${username} not found.`);
-        setIsLoading(false); // Stop loading if user not found
+        setIsLoading(false);
       }
     });
 
@@ -171,15 +170,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   useEffect(() => {
     if (!profileUser) return;
 
-    // Switched to a listener to make the posts list reactive to changes (like deletion)
-    // FIX: Changed to geminiService for consistency
     const unsubscribePosts = geminiService.listenToPostsByUser(profileUser.id, (userPosts) => {
         setPosts(userPosts);
     });
 
     const fetchOtherData = async () => {
       if (profileUser.friendIds && profileUser.friendIds.length > 0) {
-          const friends = await firebaseService.getUsersByIds(profileUser.friendIds);
+          const friends = await geminiService.getUsersByIds(profileUser.friendIds);
           setFriendsList(friends);
       } else {
           setFriendsList([]);
@@ -198,7 +195,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         isInitialLoadRef.current = false;
       }
       
-      setIsLoading(false); // Stop loading after all related data is fetched
+      setIsLoading(false);
     };
     
     fetchOtherData();
@@ -219,7 +216,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     const checkStatus = async () => {
         setIsLoadingStatus(true);
         try {
-            const status = await firebaseService.checkFriendshipStatus(currentUser.id, profileUser.id);
+            const status = await geminiService.checkFriendshipStatus(currentUser.id, profileUser.id);
             setFriendshipStatus(status);
         } catch (error) {
             console.error("Failed to check friendship status:", error);

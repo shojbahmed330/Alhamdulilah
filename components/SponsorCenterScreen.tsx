@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User, Campaign, Lead } from '../types';
 import { firebaseService } from '../services/firebaseService';
@@ -81,7 +82,8 @@ const AdsScreen: React.FC<AdsScreenProps> = ({ currentUser, onSetTtsMessage, las
     
     const handleCommand = useCallback(async (command: string) => {
         try {
-            const intentResponse = await geminiService.processIntent(command);
+            // FIX: Pass context to geminiService
+            const intentResponse = await geminiService.processIntent(command, {});
             const { intent, slots } = intentResponse;
 
             switch (intent) {
@@ -226,7 +228,7 @@ const AdsScreen: React.FC<AdsScreenProps> = ({ currentUser, onSetTtsMessage, las
         }
         setIsLoadingLeads(true);
         setViewingLeadsFor(campaignId);
-        const fetchedLeads = await firebaseService.getLeadsForCampaign(campaignId);
+        const fetchedLeads = await geminiService.getLeadsForCampaign(campaignId);
         setLeads(fetchedLeads);
         setIsLoadingLeads(false);
     };
